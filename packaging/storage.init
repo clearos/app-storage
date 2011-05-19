@@ -1,0 +1,66 @@
+#!/bin/bash
+#
+# chkconfig: 12345 26 75
+# description: Provides storage mapping
+
+### BEGIN INIT INFO
+# Default-Start: 12345
+# Default-Stop:  0 6
+# Required-Start: $local_fs $network $remote_fs 
+# Required-Stop: 
+# Short-Description: Provides storage mapping
+# Description: Provides strorage mapping
+# Provides: storage
+### END INIT INFO
+
+# Source function library.
+. /etc/init.d/functions
+
+# Source networking configuration.
+. /etc/sysconfig/network
+
+prog=storage
+lockfile=/var/lock/subsys/$prog
+
+start() {
+	echo -n $"Starting $prog: "
+	/usr/sbin/storage &> /dev/null
+	RETVAL=$?
+	[ $RETVAL -eq 0 ] && success || failure
+	echo
+	if [ $RETVAL -eq 0 ]; then
+	    touch $lockfile
+	fi
+	return $RETVAL
+}
+
+status() {
+	[ -f $lockfile ] || return 3
+}
+
+stop() {
+	echo -n $"Stopping $prog: "
+	success
+	echo
+	rm -f $lockfile
+}
+
+# See how we were called.
+case "$1" in
+  start)
+	start
+	;;
+  stop)
+	stop
+	;;
+  status)
+	status
+	;;
+  restart|force-reload)
+	stop
+	start
+	;;
+  *)
+	echo $"Usage: $0 {start|stop|status|restart|force-reload}"
+	exit 2
+esac

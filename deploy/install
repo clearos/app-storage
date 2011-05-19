@@ -1,0 +1,9 @@
+#!/bin/sh
+
+# Set boot policy
+#----------------
+
+logger -p local6.notice -t installer "app-storage-core - enabling storage on boot"
+/sbin/chkconfig --add storage
+/sbin/chkconfig storage on
+

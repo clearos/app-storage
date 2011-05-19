@@ -26,10 +26,25 @@ $app['subcategory'] = lang('base_subcategory_storage');
 // Packaging
 /////////////////////////////////////////////////////////////////////////////
 
-$app['core_directory_manifest'] = array(
-    '/etc/clearos/storage' => array(),
+$app['core_requires'] = array(
+    'initscripts',
 );
 
+$app['core_directory_manifest'] = array(
+    '/store' => array(),
+    '/etc/storage.d' => array(),
+    '/var/clearos/storage' => array(),
+    '/var/clearos/storage/plugins' => array(),
+);
+
+// TODO: make storage.conf noreplace?
+
 $app['core_file_manifest'] = array( 
-   'homes.php' => array( 'target' => '/etc/clearos/storage/homes.php' ),
+    'home-default.conf' => array ( 'target' => '/etc/storage.d/home-default.conf' ),
+    'home.php' => array( 'target' => '/var/clearos/storage/plugins/home.php' ),
+    'storage.conf' => array ( 'target' => '/etc/storage.conf' ),
+    'storage.init' => array ( 
+        'target' => '/etc/rc.d/init.d/storage',
+        'mode' => '0755',
+    ),
 );

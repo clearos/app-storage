@@ -20,6 +20,7 @@ Summary: Storage summary - APIs and install
 Group: ClearOS/Libraries
 License: LGPLv3
 Requires: app-base-core
+Requires: initscripts
 
 %description core
 Storage long description
@@ -34,8 +35,14 @@ This package provides the core API and libraries.
 mkdir -p -m 755 %{buildroot}/usr/clearos/apps/storage
 cp -r * %{buildroot}/usr/clearos/apps/storage/
 
-install -d -m 0755 %{buildroot}/etc/clearos/storage
-install -D -m 0644 packaging/homes.php %{buildroot}/etc/clearos/storage/homes.php
+install -d -m 0755 %{buildroot}/etc/storage.d
+install -d -m 0755 %{buildroot}/store
+install -d -m 0755 %{buildroot}/var/clearos/storage
+install -d -m 0755 %{buildroot}/var/clearos/storage/plugins
+install -D -m 0644 packaging/home-default.conf %{buildroot}/etc/storage.d/home-default.conf
+install -D -m 0644 packaging/home.php %{buildroot}/var/clearos/storage/plugins/home.php
+install -D -m 0644 packaging/storage.conf %{buildroot}/etc/storage.conf
+install -D -m 0755 packaging/storage.init %{buildroot}/etc/rc.d/init.d/storage
 
 %post
 logger -p local6.notice -t installer 'app-storage - installing'
@@ -75,8 +82,14 @@ exit 0
 %exclude /usr/clearos/apps/storage/packaging
 %exclude /usr/clearos/apps/storage/tests
 %dir /usr/clearos/apps/storage
-%dir /etc/clearos/storage
+%dir /etc/storage.d
+%dir /store
+%dir /var/clearos/storage
+%dir /var/clearos/storage/plugins
 /usr/clearos/apps/storage/deploy
 /usr/clearos/apps/storage/language
 /usr/clearos/apps/storage/libraries
-/etc/clearos/storage/homes.php
+/etc/storage.d/home-default.conf
+/var/clearos/storage/plugins/home.php
+/etc/storage.conf
+/etc/rc.d/init.d/storage
