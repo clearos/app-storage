@@ -1,7 +1,7 @@
 
 Name: app-storage-core
 Group: ClearOS/Libraries
-Version: 5.9.9.0
+Version: 5.9.9.1
 Release: 1%{dist}
 Summary: Storage summary - APIs and install
 License: LGPLv3
