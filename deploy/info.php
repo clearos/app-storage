@@ -21,10 +21,13 @@ $app['description'] = lang('storage_app_long_description');
 $app['name'] = lang('storage_storage_manager');
 $app['category'] = lang('base_category_system');
 $app['subcategory'] = lang('base_subcategory_storage');
+$app['menu_enabled'] = FALSE;
 
 /////////////////////////////////////////////////////////////////////////////
 // Packaging
 /////////////////////////////////////////////////////////////////////////////
+
+$app['core_only'] = TRUE;
 
 $app['core_requires'] = array(
     'initscripts',

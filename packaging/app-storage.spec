@@ -1,34 +1,24 @@
 
-Name: app-storage
-Group: ClearOS/Apps
+Name: app-storage-core
+Group: ClearOS/Libraries
 Version: 5.9.9.0
 Release: 1%{dist}
-Summary: Storage summary
-License: GPLv3
+Summary: Storage summary - APIs and install
+License: LGPLv3
 Packager: ClearFoundation
 Vendor: ClearFoundation
-Source: %{name}-%{version}.tar.gz
+Source: app-storage-%{version}.tar.gz
 Buildarch: noarch
-Requires: %{name}-core = %{version}-%{release}
-Requires: app-base
-
-%description
-Storage long description
-
-%package core
-Summary: Storage summary - APIs and install
-Group: ClearOS/Libraries
-License: LGPLv3
 Requires: app-base-core
 Requires: initscripts
 
-%description core
+%description
 Storage long description
 
 This package provides the core API and libraries.
 
 %prep
-%setup -q
+%setup -q -n app-storage-%{version}
 %build
 
 %install
@@ -45,9 +35,6 @@ install -D -m 0644 packaging/storage.conf %{buildroot}/etc/storage.conf
 install -D -m 0755 packaging/storage.init %{buildroot}/etc/rc.d/init.d/storage
 
 %post
-logger -p local6.notice -t installer 'app-storage - installing'
-
-%post core
 logger -p local6.notice -t installer 'app-storage-core - installing'
 
 if [ $1 -eq 1 ]; then
@@ -60,11 +47,6 @@ exit 0
 
 %preun
 if [ $1 -eq 0 ]; then
-    logger -p local6.notice -t installer 'app-storage - uninstalling'
-fi
-
-%preun core
-if [ $1 -eq 0 ]; then
     logger -p local6.notice -t installer 'app-storage-core - uninstalling'
     [ -x /usr/clearos/apps/storage/deploy/uninstall ] && /usr/clearos/apps/storage/deploy/uninstall
 fi
@@ -72,12 +54,6 @@ fi
 exit 0
 
 %files
-%defattr(-,root,root)
-/usr/clearos/apps/storage/controllers
-/usr/clearos/apps/storage/htdocs
-/usr/clearos/apps/storage/views
-
-%files core
 %defattr(-,root,root)
 %exclude /usr/clearos/apps/storage/packaging
 %exclude /usr/clearos/apps/storage/tests
