@@ -100,9 +100,9 @@ class Storage extends Engine
     // C O N S T A N T S
     ///////////////////////////////////////////////////////////////////////////////
 
-    const FILE_CONFIG = '/etc/storage.conf';
+    const FILE_CONFIG = '/etc/clearos/storage.conf';
+    const PATH_CONFIGLETS = '/etc/clearos/storage.d';
     const PATH_PLUGINS = '/var/clearos/storage/plugins';
-    const PATH_CONFIGLETS = '/etc/storage.d';
 
     ///////////////////////////////////////////////////////////////////////////////
     // M E T H O D S

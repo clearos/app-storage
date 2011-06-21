@@ -35,7 +35,7 @@ $app['core_requires'] = array(
 
 $app['core_directory_manifest'] = array(
     '/store' => array(),
-    '/etc/storage.d' => array(),
+    '/etc/clearos/storage.d' => array(),
     '/var/clearos/storage' => array(),
     '/var/clearos/storage/plugins' => array(),
 );
@@ -43,9 +43,11 @@ $app['core_directory_manifest'] = array(
 // TODO: make storage.conf noreplace?
 
 $app['core_file_manifest'] = array( 
-    'home-default.conf' => array ( 'target' => '/etc/storage.d/home-default.conf' ),
+    'home-default.conf' => array ( 'target' => '/etc/clearos/storage.d/home-default.conf' ),
     'home.php' => array( 'target' => '/var/clearos/storage/plugins/home.php' ),
-    'storage.conf' => array ( 'target' => '/etc/storage.conf' ),
+    'storage.conf' => array ( 
+        'target' => '/etc/clearos/storage.conf' 
+    ),
     'storage.init' => array ( 
         'target' => '/etc/rc.d/init.d/storage',
         'mode' => '0755',
