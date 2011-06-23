@@ -29,8 +29,6 @@ install -d -m 0755 %{buildroot}/etc/clearos/storage.d
 install -d -m 0755 %{buildroot}/store
 install -d -m 0755 %{buildroot}/var/clearos/storage
 install -d -m 0755 %{buildroot}/var/clearos/storage/plugins
-install -D -m 0644 packaging/home-default.conf %{buildroot}/etc/clearos/storage.d/home-default.conf
-install -D -m 0644 packaging/home.php %{buildroot}/var/clearos/storage/plugins/home.php
 install -D -m 0644 packaging/storage.conf %{buildroot}/etc/clearos/storage.conf
 install -D -m 0755 packaging/storage.init %{buildroot}/etc/rc.d/init.d/storage
 
@@ -65,7 +63,5 @@ exit 0
 /usr/clearos/apps/storage/deploy
 /usr/clearos/apps/storage/language
 /usr/clearos/apps/storage/libraries
-/etc/clearos/storage.d/home-default.conf
-/var/clearos/storage/plugins/home.php
 /etc/clearos/storage.conf
 /etc/rc.d/init.d/storage

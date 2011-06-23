@@ -43,8 +43,6 @@ $app['core_directory_manifest'] = array(
 // TODO: make storage.conf noreplace?
 
 $app['core_file_manifest'] = array( 
-    'home-default.conf' => array ( 'target' => '/etc/clearos/storage.d/home-default.conf' ),
-    'home.php' => array( 'target' => '/var/clearos/storage/plugins/home.php' ),
     'storage.conf' => array ( 
         'target' => '/etc/clearos/storage.conf' 
     ),
