@@ -50,4 +50,8 @@ $app['core_file_manifest'] = array(
         'target' => '/etc/rc.d/init.d/storage',
         'mode' => '0755',
     ),
+    'storage' => array ( 
+        'target' => '/usr/sbin/storage',
+        'mode' => '0755',
+    ),
 );
