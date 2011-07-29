@@ -2,7 +2,7 @@
 Name: app-storage-core
 Group: ClearOS/Libraries
 Version: 5.9.9.3
-Release: 1%{dist}
+Release: 2.1%{dist}
 Summary: Storage Manager - APIs and install
 License: LGPLv3
 Packager: ClearFoundation
