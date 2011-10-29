@@ -1,4 +1,4 @@
-#!/usr/clearos/webconfig/usr/bin/php
+#!/usr/clearos/sandbox/usr/bin/php
 <?php
 
 /**
