@@ -2,7 +2,7 @@
 Name: app-storage
 Version: 6.2.0.beta3
 Release: 1%{dist}
-Summary: Storage Manager - APIs and instalcl
+Summary: Storage Manager - APIs and install
 License: LGPLv3
 Group: ClearOS/Libraries
 Source: app-storage-%{version}.tar.gz
