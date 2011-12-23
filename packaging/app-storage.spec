@@ -1,24 +1,28 @@
 
-Name: app-storage-core
-Group: ClearOS/Libraries
+Name: app-storage
 Version: 6.2.0.beta3
 Release: 1%{dist}
-Summary: Storage Manager - APIs and install
+Summary: Storage Manager - APIs and instalcl
 License: LGPLv3
-Packager: ClearFoundation
-Vendor: ClearFoundation
+Group: ClearOS/Libraries
 Source: app-storage-%{version}.tar.gz
 Buildarch: noarch
+
+%description
+Storage long description
+
+%package core
+Summary: Storage Manager - APIs and install
 Requires: app-base-core
 Requires: initscripts
 
-%description
+%description core
 Storage long description
 
 This package provides the core API and libraries.
 
 %prep
-%setup -q -n app-storage-%{version}
+%setup -q
 %build
 
 %install
@@ -33,7 +37,7 @@ install -D -m 0755 packaging/storage %{buildroot}/usr/sbin/storage
 install -D -m 0644 packaging/storage.conf %{buildroot}/etc/clearos/storage.conf
 install -D -m 0755 packaging/storage.init %{buildroot}/etc/rc.d/init.d/storage
 
-%post
+%post core
 logger -p local6.notice -t installer 'app-storage-core - installing'
 
 if [ $1 -eq 1 ]; then
@@ -44,7 +48,7 @@ fi
 
 exit 0
 
-%preun
+%preun core
 if [ $1 -eq 0 ]; then
     logger -p local6.notice -t installer 'app-storage-core - uninstalling'
     [ -x /usr/clearos/apps/storage/deploy/uninstall ] && /usr/clearos/apps/storage/deploy/uninstall
@@ -52,7 +56,7 @@ fi
 
 exit 0
 
-%files
+%files core
 %defattr(-,root,root)
 %exclude /usr/clearos/apps/storage/packaging
 %exclude /usr/clearos/apps/storage/tests
