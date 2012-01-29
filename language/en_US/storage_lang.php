@@ -1,5 +1,4 @@
 <?php
 
-$lang['storage_app_long_description'] = 'Storage long description'; // FIXME
-$lang['storage_app_summary'] = 'Storage summary'; // FIXME
-$lang['storage_storage_manager'] = 'Storage Manager';
+$lang['storage_app_name'] = 'Storage Manager';
+$lang['storage_app_description'] = 'The Storage Manager provides flexiblem maintenance of data shares.';

@@ -14,7 +14,7 @@ Requires: app-base-core
 Requires: initscripts
 
 %description
-Storage long description
+The Storage Manager provides flexiblem maintenance of data shares.
 
 This package provides the core API and libraries.
 
