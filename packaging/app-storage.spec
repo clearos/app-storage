@@ -1,9 +1,9 @@
 
 Name: app-storage
 Epoch: 1
-Version: 1.0.10
+Version: 1.1.0
 Release: 1%{dist}
-Summary: Storage Manager - APIs and install
+Summary: Storage Manager - Core
 License: LGPLv3
 Group: ClearOS/Libraries
 Source: app-storage-%{version}.tar.gz
@@ -13,7 +13,7 @@ Buildarch: noarch
 The Storage Manager provides flexiblem maintenance of data shares.
 
 %package core
-Summary: Storage Manager - APIs and install
+Summary: Storage Manager - Core
 Requires: app-base-core
 Requires: initscripts
 
