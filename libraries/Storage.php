@@ -7,7 +7,7 @@
  * @package    Storage
  * @subpackage Libraries
  * @author     ClearFoundation <developer@clearfoundation.com>
- * @copyright  2003-2011 ClearFoundation
+ * @copyright  2011-2012 ClearFoundation
  * @license    http://www.gnu.org/copyleft/lgpl.html GNU Lesser General Public License version 3 or later
  * @link       http://www.clearfoundation.com/docs/developer/apps/storage/
  */
@@ -89,7 +89,7 @@ clearos_load_library('base/Validation_Exception');
  * @package    Storage
  * @subpackage Libraries
  * @author     ClearFoundation <developer@clearfoundation.com>
- * @copyright  2003-2011 ClearFoundation
+ * @copyright  2011-2012 ClearFoundation
  * @license    http://www.gnu.org/copyleft/lgpl.html GNU Lesser General Public License version 3 or later
  * @link       http://www.clearfoundation.com/docs/developer/apps/storage/
  */
@@ -102,7 +102,7 @@ class Storage extends Engine
 
     const FILE_CONFIG = '/etc/clearos/storage.conf';
     const PATH_CONFIGLETS = '/etc/clearos/storage.d';
-    const PATH_PLUGINS = '/var/clearos/storage/plugins';
+    const COMMAND_MOUNT = '/bin/mount';
 
     ///////////////////////////////////////////////////////////////////////////////
     // M E T H O D S
@@ -118,13 +118,77 @@ class Storage extends Engine
     }
 
     /**
-     * Returns detailed plugin list.
+     * Performs storage mounts.
      *
-     * @return array plugin details
+     */
+
+    public function do_mount()
+    {
+        clearos_profile(__METHOD__, __LINE__);
+
+        $config = $this->get_config();
+
+        $entries = "# Storage engine - start\n";
+// FIXME
+$base = '/store';
+
+        foreach ($config as $plugin => $metadata) {
+            foreach ($metadata['config'] as $source => $details) {
+
+                $target = $details['base'] . '/' . $details['directory'];
+
+                $base_folder = new Folder($details['base']);
+                $target_folder = new Folder($target);
+                $source_folder = new Folder($source);
+
+                if (! $source_folder->exists()) {
+                    clearos_log('storage', 'storage mount point does not exist: ' . $source);
+                    continue;
+/*
+FIXME: disable for testing
+                } else if (count($source_folder->get_listing()) > 0) {
+                    clearos_log('storage', 'storage mount point is non-empty: ' . $source);
+                    continue;
+*/
+                } else if (! $base_folder->exists()) {
+                    clearos_log('storage', 'storage base does not exist: ' . $details['base']);
+                    continue;
+                } else if (! $target_folder->exists()) {
+                    clearos_log('storage', 'creating storage target: ' . $target);
+                    $target_folder->create(
+                        $details['owner'],
+                        $details['group'],
+                        $details['permissions']
+                    );
+                } 
+
+                try {
+                    $shell = new Shell();
+                    // $shell->execute(self::COMMAND_MOUNT, '--bind ' . $source . ' ' . $target, TRUE);
+
+                    $entries .= sprintf("%-45s %-25s %-7s %-13s %s %s\n", 
+                        $target, $source, 'none', 'bind,rw', '0', '0'
+                    );
+                } catch (\Exception $e) {
+                    clearos_log('storage', 'mount failed: ' .$source . ' -> ' . $target);
+                }
+            }
+        }
+
+        $entries .= "# Storage engine - end\n";
+
+print_r($entries);
+        return $entries;
+    }
+
+    /**
+     * Returns detailed configs.
+     *
+     * @return array config details
      * @throws Engine_Exception
      */
 
-    public function get_plugins()
+    public function get_config()
     {
         clearos_profile(__METHOD__, __LINE__);
 
@@ -133,46 +197,36 @@ class Storage extends Engine
 
         include self::FILE_CONFIG;
 
-        // Load plugin configlets
-        //-----------------------
+        // Load configlets
+        //----------------
 
-        $folder = new Folder(self::PATH_PLUGINS);
+        $folder = new Folder(self::PATH_CONFIGLETS);
 
-        $plugin_list = $folder->get_listing();
+        $configs_list = $folder->get_listing();
 
-        foreach ($plugin_list as $plugin_file) {
-            if (! preg_match('/\.php$/', $plugin_file))
+        $config = array();
+
+        foreach ($configs_list as $configlet) {
+            if (! preg_match('/_default\.conf$/', $configlet))
                 continue;
 
-            $plugin = array();
-            $plugin_basename = preg_replace('/\.php/', '', $plugin_file);
-
-            // Load base plugin information
-            //-----------------------------
-
-            $plugin = array();
-
-            include self::PATH_PLUGINS . '/' . $plugin_file;
-
-            $plugins[$plugin_basename]['info'] = $plugin;
-
-            // Load plugin configuration
-            //--------------------------
+            $basename = preg_replace('/_default\.conf/', '', $configlet);
 
             $storage = array();
+            $info = array();
 
-            if (file_exists(self::PATH_CONFIGLETS . '/' . $plugin_basename . '.conf')) {
-                include self::PATH_CONFIGLETS . '/' . $plugin_basename . '.conf';
-            } else if (file_exists(self::PATH_CONFIGLETS . '/' . $plugin_basename . '-cluster.conf')) {
-                include self::PATH_CONFIGLETS . '/' . $plugin_basename . '-cluster.conf';
-            } else if (file_exists(self::PATH_CONFIGLETS . '/' . $plugin_basename . '-default.conf')) {
-                include self::PATH_CONFIGLETS . '/' . $plugin_basename . '-default.conf';
-            }
+            include self::PATH_CONFIGLETS . '/' . $configlet;
 
-            $plugins[$plugin_basename]['config'] = $storage;
+            if (file_exists(self::PATH_CONFIGLETS . '/' . $basename . '-system.conf'))
+                include self::PATH_CONFIGLETS . '/' . $basename . '-system.conf';
+            else if (file_exists(self::PATH_CONFIGLETS . '/' . $basename . '.conf'))
+                include self::PATH_CONFIGLETS . '/' . $basename . '.conf';
+
+            $config[$basename]['info'] = $info;
+            $config[$basename]['config'] = $storage;
         }
 
-        return $plugins;
+        return $config;
     }
 
     /**
@@ -185,13 +239,13 @@ class Storage extends Engine
     {
         clearos_profile(__METHOD__, __LINE__);
 
-        $plugins = $this->get_plugins();
+        $config = $this->get_config();
 
         $entries = "# Storage engine - start\n";
 
-        foreach ($plugins as $plugin => $metadata) {
+        foreach ($config as $plugin => $metadata) {
             foreach ($metadata['config'] as $source => $details) {
-                $entries .= sprintf("%-23s %-23s %-7s %-15s %s %s\n", 
+                $entries .= sprintf("%-45s %-25s %-7s %-13s %s %s\n", 
                     $details['target'], $source, 'none', 'bind,rw', '0', '0'
                 );
             }

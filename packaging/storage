@@ -38,21 +38,11 @@ $bootstrap = getenv('CLEAROS_BOOTSTRAP') ? getenv('CLEAROS_BOOTSTRAP') : '/usr/c
 require_once $bootstrap . '/bootstrap.php';
 
 ///////////////////////////////////////////////////////////////////////////////
-// T R A N S L A T I O N S
-///////////////////////////////////////////////////////////////////////////////
-
-clearos_load_language('storage');
-
-///////////////////////////////////////////////////////////////////////////////
 // D E P E N D E N C I E S
 ///////////////////////////////////////////////////////////////////////////////
 
-use \clearos\apps\base\Engine_Exception as Engine_Exception;
-use \clearos\apps\base\Validation_Exception as Validation_Exception;
 use \clearos\apps\storage\Storage as Storage;
 
-clearos_load_library('base/Engine_Exception');
-clearos_load_library('base/Validation_Exception');
 clearos_load_library('storage/Storage');
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -60,10 +50,5 @@ clearos_load_library('storage/Storage');
 ///////////////////////////////////////////////////////////////////////////////
 
 $storage = new Storage();
-
-$plugins = $storage->get_plugins();
-print_r($plugins);
-
-$entries = $storage->generate_fstab_entries();
-echo $entries;
+$storage->do_mount();
 
