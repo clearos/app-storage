@@ -1,7 +1,7 @@
 
 Name: app-storage
 Epoch: 1
-Version: 1.2.2
+Version: 1.4.3
 Release: 1%{dist}
 Summary: Storage Manager - Core
 License: LGPLv3
@@ -70,5 +70,5 @@ exit 0
 /usr/clearos/apps/storage/language
 /usr/clearos/apps/storage/libraries
 /usr/sbin/storage
-/etc/clearos/storage.conf
+%config(noreplace) /etc/clearos/storage.conf
 /etc/rc.d/init.d/storage

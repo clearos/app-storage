@@ -101,8 +101,12 @@ class Storage extends Engine
     ///////////////////////////////////////////////////////////////////////////////
 
     const FILE_CONFIG = '/etc/clearos/storage.conf';
+    const FILE_FSTAB = '/etc/fstab';
+    const FILE_NEW_FSTAB = '/var/clearos/storage/fstab';
     const PATH_CONFIGLETS = '/etc/clearos/storage.d';
     const COMMAND_MOUNT = '/bin/mount';
+    const DELIMITER_START = '# Storage engine - start';
+    const DELIMITER_END = '# Storage engine - end';
 
     ///////////////////////////////////////////////////////////////////////////////
     // M E T H O D S
@@ -126,13 +130,22 @@ class Storage extends Engine
     {
         clearos_profile(__METHOD__, __LINE__);
 
-        $config = $this->get_config();
+        // Check state
+        //------------
 
-        $entries = "# Storage engine - start\n";
-// FIXME
-$base = '/store';
+        $config = $this->_get_config();
 
-        foreach ($config as $plugin => $metadata) {
+        if (!isset($config['enabled']) || !$config['enabled'])
+            return;
+
+        // Create mount definition
+        //------------------------
+        
+        $configlets = $this->_get_configlets();
+        $entries = array();
+        $mounted = array('/var/lib/mysql'); // FIXME: implement this // FIXME: implement this // FIXME: implement this // FIXME: implement this
+
+        foreach ($configlets as $plugin => $metadata) {
             foreach ($metadata['config'] as $source => $details) {
 
                 $target = $details['base'] . '/' . $details['directory'];
@@ -141,17 +154,14 @@ $base = '/store';
                 $target_folder = new Folder($target);
                 $source_folder = new Folder($source);
 
-                if (! $source_folder->exists()) {
+                if (! $base_folder->exists()) {
+                    clearos_log('storage', 'storage base does not exist: ' . $details['base']);
+                    continue;
+                } else if (! $source_folder->exists()) {
                     clearos_log('storage', 'storage mount point does not exist: ' . $source);
                     continue;
-/*
-FIXME: disable for testing
-                } else if (count($source_folder->get_listing()) > 0) {
+                } else if (!in_array($source, $mounted) && (count($source_folder->get_listing()) > 0)) {
                     clearos_log('storage', 'storage mount point is non-empty: ' . $source);
-                    continue;
-*/
-                } else if (! $base_folder->exists()) {
-                    clearos_log('storage', 'storage base does not exist: ' . $details['base']);
                     continue;
                 } else if (! $target_folder->exists()) {
                     clearos_log('storage', 'creating storage target: ' . $target);
@@ -162,40 +172,128 @@ FIXME: disable for testing
                     );
                 } 
 
-                try {
-                    $shell = new Shell();
-                    // $shell->execute(self::COMMAND_MOUNT, '--bind ' . $source . ' ' . $target, TRUE);
+                $entries[] = sprintf("%-45s %-25s %-7s %-13s %s %s", $target, $source, 'none', 'bind,rw', '0', '0');
 
-                    $entries .= sprintf("%-45s %-25s %-7s %-13s %s %s\n", 
-                        $target, $source, 'none', 'bind,rw', '0', '0'
-                    );
+                try {
+                    if (!in_array($source, $mounted)) {
+                        clearos_log('storage', 'mounting: ' . $source . ' -> ' . $target);
+                        $shell = new Shell();
+                        $shell->execute(self::COMMAND_MOUNT, '--bind ' . $source . ' ' . $target, TRUE);
+                    } else {
+                        clearos_log('storage', 'mount already enabled: ' . $source . ' -> ' . $target);
+                    }
                 } catch (\Exception $e) {
-                    clearos_log('storage', 'mount failed: ' .$source . ' -> ' . $target);
+                    clearos_log('storage', 'mount failed: ' . $source . ' -> ' . $target);
                 }
+            }
+        }
+
+        // Bail if nothing has changed
+        //----------------------------
+
+        $fstab = $this->_get_fstab_entries();
+
+        if ($fstab === $entries)
+            return;
+
+        // Update fstab
+        //-------------
+
+        $file = new File(self::FILE_FSTAB);
+
+        $lines = $file->get_contents_as_array();
+        $inside = FALSE;
+        $new_lines = array();
+
+        foreach ($lines as $line) {
+            if (preg_match('/^' . self::DELIMITER_END . '$/', $line))
+                $inside = FALSE;
+            else if (preg_match('/^' . self::DELIMITER_START . '$/', $line))
+                $inside = TRUE;
+            else if (!$inside)
+                $new_lines[] = $line;
+        }
+
+        $entries[] = self::DELIMITER_END;
+        array_unshift($entries, self::DELIMITER_START);
+
+        $new_lines = array_merge($new_lines, $entries);
+
+        $new_file = new File(self::FILE_NEW_FSTAB);
+
+        if ($new_file->exists())
+            $new_file->delete();
+
+        $new_file->create('root', 'root', '0644');
+        $new_file->dump_contents_from_array($new_lines);
+        $new_file->copy_to(self::FILE_FSTAB);
+    }
+
+    /**
+     * Returns the system time (in seconds since Jan 1, 1970).
+     *
+     * @return integer system time in seconds since Jan 1, 1970
+     */
+
+    public function generate_fstab_entries()
+    {
+        clearos_profile(__METHOD__, __LINE__);
+
+        $config = $this->_get_configlets();
+
+        $entries = "# Storage engine - start\n";
+
+        foreach ($config as $plugin => $metadata) {
+            foreach ($metadata['config'] as $source => $details) {
+                $entries .= sprintf("%-45s %-25s %-7s %-13s %s %s\n", 
+                    $details['target'], $source, 'none', 'bind,rw', '0', '0'
+                );
             }
         }
 
         $entries .= "# Storage engine - end\n";
 
-print_r($entries);
         return $entries;
     }
 
+    ///////////////////////////////////////////////////////////////////////////////
+    // P R I V A T E   M E T H O D S
+    ///////////////////////////////////////////////////////////////////////////////
+    
     /**
-     * Returns detailed configs.
+     * Returns configuration.
+     *
+     * @return array configuration
+     * @throws Engine_Exception
+     */
+
+    protected function _get_config()
+    {
+        clearos_profile(__METHOD__, __LINE__);
+
+        include self::FILE_CONFIG;
+
+        return $config;
+    }
+
+    /**
+     * Returns detailed configlets.
      *
      * @return array config details
      * @throws Engine_Exception
      */
 
-    public function get_config()
+    protected function _get_configlets()
     {
         clearos_profile(__METHOD__, __LINE__);
 
-        // Load base configuration
-        //------------------------
+        // Base configuration
+        //-------------------
 
-        include self::FILE_CONFIG;
+        $config = $this->_get_config();
+
+        // $base is used in the configlet file
+        $base = $config['base'];
 
         // Load configlets
         //----------------
@@ -204,7 +302,7 @@ print_r($entries);
 
         $configs_list = $folder->get_listing();
 
-        $config = array();
+        $configlets = array();
 
         foreach ($configs_list as $configlet) {
             if (! preg_match('/_default\.conf$/', $configlet))
@@ -222,37 +320,40 @@ print_r($entries);
             else if (file_exists(self::PATH_CONFIGLETS . '/' . $basename . '.conf'))
                 include self::PATH_CONFIGLETS . '/' . $basename . '.conf';
 
-            $config[$basename]['info'] = $info;
-            $config[$basename]['config'] = $storage;
+            $configlets[$basename]['info'] = $info;
+            $configlets[$basename]['config'] = $storage;
         }
 
-        return $config;
+        return $configlets;
     }
 
     /**
-     * Returns the system time (in seconds since Jan 1, 1970).
+     * Returns existing fstab entries
      *
-     * @return integer system time in seconds since Jan 1, 1970
+     * @return string fstab entries
+     * @throws Engine_Exception
      */
 
-    public function generate_fstab_entries()
+    protected function _get_fstab_entries()
     {
         clearos_profile(__METHOD__, __LINE__);
 
-        $config = $this->get_config();
+        $file = new FILE(self::FILE_FSTAB);
 
-        $entries = "# Storage engine - start\n";
+        $lines = $file->get_contents_as_array();
 
-        foreach ($config as $plugin => $metadata) {
-            foreach ($metadata['config'] as $source => $details) {
-                $entries .= sprintf("%-45s %-25s %-7s %-13s %s %s\n", 
-                    $details['target'], $source, 'none', 'bind,rw', '0', '0'
-                );
-            }
+        $start = FALSE;
+        $existing = array();
+
+        foreach ($lines as $line) {
+            if (preg_match('/^' . self::DELIMITER_END . '$/', $line))
+                break;
+            else if ($start)
+                $existing[] = $line;
+            else if (preg_match('/^' . self::DELIMITER_START . '$/', $line))
+                $start = TRUE;
         }
 
-        $entries .= "# Storage engine - end\n";
-
-        return $entries;
+        return $existing;
     }
 }

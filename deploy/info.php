@@ -5,7 +5,7 @@
 /////////////////////////////////////////////////////////////////////////////
 
 $app['basename'] = 'storage';
-$app['version'] = '1.2.2';
+$app['version'] = '1.4.3';
 $app['release'] = '1';
 $app['vendor'] = 'ClearFoundation';
 $app['packager'] = 'ClearFoundation';
@@ -43,7 +43,9 @@ $app['core_directory_manifest'] = array(
 
 $app['core_file_manifest'] = array( 
     'storage.conf' => array ( 
-        'target' => '/etc/clearos/storage.conf' 
+        'target' => '/etc/clearos/storage.conf',
+        'config' => TRUE,
+        'config_params' => 'noreplace',
     ),
     'storage.init' => array ( 
         'target' => '/etc/rc.d/init.d/storage',
