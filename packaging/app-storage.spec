@@ -1,7 +1,7 @@
 
 Name: app-storage
 Epoch: 1
-Version: 1.4.3
+Version: 1.4.5
 Release: 1%{dist}
 Summary: Storage Manager - Core
 License: LGPLv3
