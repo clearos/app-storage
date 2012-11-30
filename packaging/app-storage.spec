@@ -1,24 +1,29 @@
 
 Name: app-storage
 Epoch: 1
-Version: 1.4.6
+Version: 1.4.7
 Release: 1%{dist}
-Summary: Storage Manager - Core
-License: LGPLv3
-Group: ClearOS/Libraries
-Source: app-storage-%{version}.tar.gz
+Summary: Storage Manager
+License: GPLv3
+Group: ClearOS/Apps
+Source: %{name}-%{version}.tar.gz
 Buildarch: noarch
+Requires: %{name}-core = 1:%{version}-%{release}
+Requires: app-base
 
 %description
-The Storage Manager provides flexiblem maintenance of data shares.
+The Storage Manager allows you to map large data shares to storage volumes.
 
 %package core
 Summary: Storage Manager - Core
+License: LGPLv3
+Group: ClearOS/Libraries
 Requires: app-base-core
+Requires: app-base >= 1:1.4.7
 Requires: initscripts
 
 %description core
-The Storage Manager provides flexiblem maintenance of data shares.
+The Storage Manager allows you to map large data shares to storage volumes.
 
 This package provides the core API and libraries.
 
@@ -34,9 +39,13 @@ install -d -m 0755 %{buildroot}/etc/clearos/storage.d
 install -d -m 0755 %{buildroot}/store
 install -d -m 0755 %{buildroot}/var/clearos/storage
 install -d -m 0755 %{buildroot}/var/clearos/storage/plugins
+install -d -m 0755 %{buildroot}/var/clearos/storage/state
 install -D -m 0755 packaging/storage %{buildroot}/usr/sbin/storage
 install -D -m 0644 packaging/storage.conf %{buildroot}/etc/clearos/storage.conf
 install -D -m 0755 packaging/storage.init %{buildroot}/etc/rc.d/init.d/storage
+
+%post
+logger -p local6.notice -t installer 'app-storage - installing'
 
 %post core
 logger -p local6.notice -t installer 'app-storage-core - installing'
@@ -49,6 +58,11 @@ fi
 
 exit 0
 
+%preun
+if [ $1 -eq 0 ]; then
+    logger -p local6.notice -t installer 'app-storage - uninstalling'
+fi
+
 %preun core
 if [ $1 -eq 0 ]; then
     logger -p local6.notice -t installer 'app-storage-core - uninstalling'
@@ -56,6 +70,12 @@ if [ $1 -eq 0 ]; then
 fi
 
 exit 0
+
+%files
+%defattr(-,root,root)
+/usr/clearos/apps/storage/controllers
+/usr/clearos/apps/storage/htdocs
+/usr/clearos/apps/storage/views
 
 %files core
 %defattr(-,root,root)
@@ -66,6 +86,7 @@ exit 0
 %dir /store
 %dir /var/clearos/storage
 %dir /var/clearos/storage/plugins
+%dir /var/clearos/storage/state
 /usr/clearos/apps/storage/deploy
 /usr/clearos/apps/storage/language
 /usr/clearos/apps/storage/libraries

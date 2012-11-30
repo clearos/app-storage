@@ -5,7 +5,7 @@
 /////////////////////////////////////////////////////////////////////////////
 
 $app['basename'] = 'storage';
-$app['version'] = '1.4.6';
+$app['version'] = '1.4.7';
 $app['release'] = '1';
 $app['vendor'] = 'ClearFoundation';
 $app['packager'] = 'ClearFoundation';
@@ -20,15 +20,13 @@ $app['description'] = lang('storage_app_description');
 $app['name'] = lang('storage_app_name');
 $app['category'] = lang('base_category_system');
 $app['subcategory'] = lang('base_subcategory_storage');
-$app['menu_enabled'] = FALSE;
 
 /////////////////////////////////////////////////////////////////////////////
 // Packaging
 /////////////////////////////////////////////////////////////////////////////
 
-$app['core_only'] = TRUE;
-
 $app['core_requires'] = array(
+    'app-base >= 1:1.4.7',
     'initscripts',
 );
 
@@ -37,6 +35,7 @@ $app['core_directory_manifest'] = array(
     '/etc/clearos/storage.d' => array(),
     '/var/clearos/storage' => array(),
     '/var/clearos/storage/plugins' => array(),
+    '/var/clearos/storage/state' => array(),
 );
 
 // TODO: make storage.conf noreplace?

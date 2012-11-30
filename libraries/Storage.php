@@ -104,9 +104,28 @@ class Storage extends Engine
     const FILE_FSTAB = '/etc/fstab';
     const FILE_NEW_FSTAB = '/var/clearos/storage/fstab';
     const PATH_CONFIGLETS = '/etc/clearos/storage.d';
+    const PATH_STATE = '/var/clearos/storage/state';
     const COMMAND_MOUNT = '/bin/mount';
+
     const DELIMITER_START = '# Storage engine - start';
     const DELIMITER_END = '# Storage engine - end';
+
+    const STATE_BASE_NOT_EXIST = 'base_not_exist';
+    const STATE_SOURCE_FOLDER_NOT_EXIST = 'source_folder_not_exist';
+    const STATE_SOURCE_FOLDER_NON_EMPTY = 'source_folder_non_empty';
+    const STATE_SOURCE_ALREADY_HAS_MOUNT = 'already_has_mount';
+    const STATE_STORE_ACTIVE = 'active';
+    const STATE_STORE_MOUNT_FAILED = 'mount_failed';
+    const STATE_UNITIALIZED = 'unitialized';
+
+    const STATE_LEVEL_GOOD = 'good';
+    const STATE_LEVEL_BAD = 'bad';
+
+    ///////////////////////////////////////////////////////////////////////////////
+    // M E M B E R S
+    ///////////////////////////////////////////////////////////////////////////////
+
+    protected $states = array();
 
     ///////////////////////////////////////////////////////////////////////////////
     // M E T H O D S
@@ -119,6 +138,16 @@ class Storage extends Engine
     public function __construct()
     {
         clearos_profile(__METHOD__, __LINE__);
+
+        $this->states = array(
+            self::STATE_BASE_NOT_EXIST => self::STATE_LEVEL_BAD,
+            self::STATE_SOURCE_FOLDER_NOT_EXIST => self::STATE_LEVEL_BAD,
+            self::STATE_SOURCE_FOLDER_NON_EMPTY => self::STATE_LEVEL_BAD,
+            self::STATE_SOURCE_ALREADY_HAS_MOUNT => self::STATE_LEVEL_GOOD,
+            self::STATE_STORE_ACTIVE => self::STATE_LEVEL_GOOD,
+            self::STATE_STORE_MOUNT_FAILED => self::STATE_LEVEL_BAD,
+            self::STATE_UNITIALIZED => self::STATE_LEVEL_BAD,
+        );
     }
 
     /**
@@ -143,47 +172,54 @@ class Storage extends Engine
         
         $configlets = $this->_get_configlets();
         $entries = array();
-        $mounted = array('/var/lib/mysql'); // FIXME: implement this // FIXME: implement this // FIXME: implement this // FIXME: implement this
+        $mounted = $this->_get_mounted();
 
         foreach ($configlets as $plugin => $metadata) {
-            foreach ($metadata['config'] as $source => $details) {
+            foreach ($metadata['config'] as $source_name => $details) {
 
-                $target = $details['base'] . '/' . $details['directory'];
+                $store_name = $details['base'] . '/' . $details['directory'];
 
-                $base_folder = new Folder($details['base']);
-                $target_folder = new Folder($target);
-                $source_folder = new Folder($source);
+                $store_base_folder = new Folder($details['base'], TRUE);
+                $store_folder = new Folder($store_name, TRUE);
+                $source_folder = new Folder($source_name, TRUE);
 
-                if (! $base_folder->exists()) {
-                    clearos_log('storage', 'storage base does not exist: ' . $details['base']);
+                if (! $store_base_folder->exists()) {
+                    $this->_set_state($source_name, self::STATE_BASE_NOT_EXIST);
+                    $this->_set_message($source_name, lang('storage_storage_base_does_not_exist:') . ' ' . $details['base']);
                     continue;
                 } else if (! $source_folder->exists()) {
-                    clearos_log('storage', 'storage mount point does not exist: ' . $source);
+                    $this->_set_state($source_name, self::STATE_SOURCE_FOLDER_NOT_EXIST);
+                    $this->_set_message($source_name, lang('storage_source_folder_does_not_exist:') . ' ' . $source_name);
                     continue;
-                } else if (!in_array($source, $mounted) && (count($source_folder->get_listing()) > 0)) {
-                    clearos_log('storage', 'storage mount point is non-empty: ' . $source);
+                } else if (!array_key_exists($source_name, $mounted) && (count($source_folder->get_listing()) > 0)) {
+                    $this->_set_state($source_name, self::STATE_SOURCE_FOLDER_NON_EMPTY);
+                    $this->_set_message($source_name, lang('storage_source_folder_non_empty:') . ' ' . $source_name);
                     continue;
-                } else if (! $target_folder->exists()) {
-                    clearos_log('storage', 'creating storage target: ' . $target);
-                    $target_folder->create(
-                        $details['owner'],
-                        $details['group'],
-                        $details['permissions']
-                    );
-                } 
+                } else if (array_key_exists($source_name, $mounted) && ($mounted[$source_name] != $store_name)) {
+                    $this->_set_state($source_name, self::STATE_SOURCE_ALREADY_HAS_MOUNT);
+                    $this->_set_message($source_name, lang('storage_source_already_has_mount_point:') . ' ' . $mounted[$source_name]);
+                    continue;
+                }
 
-                $entries[] = sprintf("%-45s %-25s %-7s %-13s %s %s", $target, $source, 'none', 'bind,rw', '0', '0');
+                if (! $store_folder->exists()) {
+                    $this->_set_message($source_name, lang('storage_creating_store_point'));
+                    $store_folder->create($details['owner'], $details['group'], $details['permissions']);
+                }
+
+                $entries[] = sprintf("%-45s %-25s %-7s %-13s %s %s", $store_name, $source_name, 'none', 'bind,rw', '0', '0');
 
                 try {
-                    if (!in_array($source, $mounted)) {
-                        clearos_log('storage', 'mounting: ' . $source . ' -> ' . $target);
+                    if (!array_key_exists($source_name, $mounted)) {
+                        $this->_set_message($source_name, lang('storage_mounting_store:') . ' ' . $source_name . ' -> ' . $store_name);
                         $shell = new Shell();
-                        $shell->execute(self::COMMAND_MOUNT, '--bind ' . $source . ' ' . $target, TRUE);
-                    } else {
-                        clearos_log('storage', 'mount already enabled: ' . $source . ' -> ' . $target);
+                        $shell->execute(self::COMMAND_MOUNT, '--bind ' . $store_name . ' ' . $source_name, TRUE);
                     }
-                } catch (\Exception $e) {
-                    clearos_log('storage', 'mount failed: ' . $source . ' -> ' . $target);
+
+                    $this->_set_state($source_name, self::STATE_STORE_ACTIVE);
+                    $this->_set_message($source_name, lang('storage_store_active'));
+                } catch (Exception $e) {
+                    $this->_set_state($source_name, self::STATE_STORE_MOUNT_FAILED);
+                    $this->_set_message($source_name, lang('storage_store_mount_failed:') . ' ' . $source_name . ' -> ' . $store_name);
                 }
             }
         }
@@ -230,30 +266,59 @@ class Storage extends Engine
     }
 
     /**
-     * Returns the system time (in seconds since Jan 1, 1970).
+     * Returns storage mappings.
      *
-     * @return integer system time in seconds since Jan 1, 1970
+     * @return array storage mappings
      */
 
-    public function generate_fstab_entries()
+    public function get_mapping_details()
     {
         clearos_profile(__METHOD__, __LINE__);
 
-        $config = $this->_get_configlets();
+        $configlets = $this->_get_configlets();
 
-        $entries = "# Storage engine - start\n";
+        $mappings = array();
 
-        foreach ($config as $plugin => $metadata) {
-            foreach ($metadata['config'] as $source => $details) {
-                $entries .= sprintf("%-45s %-25s %-7s %-13s %s %s\n", 
-                    $details['target'], $source, 'none', 'bind,rw', '0', '0'
-                );
+        foreach ($configlets as $basename => $details) {
+            $mappings[$basename]['name'] = $details['info']['name'];
+
+            foreach ($details['config'] as $source_name => $store_details) {
+                $state = $this->get_state($source_name);
+                $state_message = $this->get_state_message($source_name);
+
+                $mappings[$basename]['mappings'][$source_name]['store'] = $store_details['base'] . '/' . $store_details['directory'];
+                $mappings[$basename]['mappings'][$source_name]['state'] = $state;
+                $mappings[$basename]['mappings'][$source_name]['state_message'] = $state_message;
+                $mappings[$basename]['mappings'][$source_name]['state_level'] = $this->states[$state];
             }
         }
 
-        $entries .= "# Storage engine - end\n";
+        return $mappings;
+    }
 
-        return $entries;
+    /**
+     * Returns details on store.
+     *
+     * @return array store detail
+     */
+
+    public function get_store_details($store_name)
+    {
+        clearos_profile(__METHOD__, __LINE__);
+
+        $mapping_details = $this->get_mapping_details();
+        $detail = array();
+
+        foreach ($mapping_details as $basename => $mapping_details) {
+            foreach ($mapping_details['mappings'] as $basename => $details) {
+                if ($store_name == $basename) {
+                    $detail = $details;
+                    $detail['plugin_name'] = $mapping_details['name'];
+                }
+            }
+        }
+
+        return $detail;
     }
 
     ///////////////////////////////////////////////////////////////////////////////
@@ -355,5 +420,134 @@ class Storage extends Engine
         }
 
         return $existing;
+    }
+
+    /**
+     * Returns mounts.
+     *
+     * @return array mounts
+     * @throws Engine_Exception
+     */
+
+    protected function _get_mounted()
+    {
+        clearos_profile(__METHOD__, __LINE__);
+
+        $shell = new Shell();
+        $shell->execute(self::COMMAND_MOUNT, '', TRUE);
+        $raw_mounts = $shell->get_output();
+
+        $mounts = array();
+
+        foreach ($raw_mounts as $line) {
+            $matches = array();
+            if (preg_match('/([^\s]+)\s+([^\s]+)\s+([^\s]+)\s+/', $line, $matches))
+                $mounts[$matches[3]] = $matches[1];
+        }
+
+        return $mounts;
+    }
+
+    /**
+     * Get store state.
+     *
+     * @param string $source_name source name
+     *
+     * @return void
+     * @throws Engine_Exception
+     */
+
+    public function get_state($source_name)
+    {
+        clearos_profile(__METHOD__, __LINE__);
+
+        $file = new File(self::PATH_STATE . '/' . preg_replace('/\//', '_', $source_name));
+
+        if (!$file->exists())
+            return self::STATE_UNITIALIZED;
+
+        $lines = $file->get_contents_as_array();
+
+        foreach ($lines as $line) {
+            $matches = array();
+            if (preg_match('/^state\s*=\s*(.*)/', $line, $matches))
+                return $matches[1];
+        }
+    }
+
+    /**
+     * Get store state message.
+     *
+     * @param string $source_name source name
+     *
+     * @return void
+     * @throws Engine_Exception
+     */
+
+    public function get_state_message($source_name)
+    {
+        clearos_profile(__METHOD__, __LINE__);
+
+        $file = new File(self::PATH_STATE . '/' . preg_replace('/\//', '_', $source_name));
+
+        if (!$file->exists())
+            return self::STATE_UNITIALIZED;
+
+        $lines = $file->get_contents_as_array();
+
+        foreach ($lines as $line) {
+            $matches = array();
+            if (preg_match('/^message\s*=\s*(.*)/', $line, $matches))
+                return $matches[1];
+        }
+    }
+    /**
+     * Sets store message.
+     *
+     * @param string $source_name source name
+     * @param string $message     message
+     *
+     * @return void
+     * @throws Engine_Exception
+     */
+
+    protected function _set_message($source_name, $message)
+    {
+        clearos_profile(__METHOD__, __LINE__);
+
+        $file = new File(self::PATH_STATE . '/' . preg_replace('/\//', '_', $source_name));
+
+        if (!$file->exists())
+            $file->create('root', 'root', '0644');
+
+        $match = $file->replace_lines('/^message\s*=\s*/', "message = $message\n");
+
+        if (!$match)
+            $file->add_lines("message = $message\n");
+    }
+
+    /**
+     * Sets store state.
+     *
+     * @param string $source_name source name
+     * @param string $state       state of store 
+     *
+     * @return void
+     * @throws Engine_Exception
+     */
+
+    protected function _set_state($source_name, $state)
+    {
+        clearos_profile(__METHOD__, __LINE__);
+
+        $file = new File(self::PATH_STATE . '/' . preg_replace('/\//', '_', $source_name));
+
+        if (!$file->exists())
+            $file->create('root', 'root', '0644');
+
+        $match = $file->replace_lines('/^state\s*=\s*/', "state = $state\n");
+
+        if (!$match)
+            $file->add_lines("state = $state\n");
     }
 }
