@@ -21,6 +21,14 @@ $app['name'] = lang('storage_app_name');
 $app['category'] = lang('base_category_system');
 $app['subcategory'] = lang('base_subcategory_storage');
 
+// Wizard extras
+$app['controllers']['storage']['wizard_name'] = lang('storage_app_name');
+$app['controllers']['storage']['wizard_description'] = lang('storage_wizard_help');
+$app['controllers']['storage']['inline_help'] = array(
+    lang('storage_big_picture') => lang('storage_inline_help_overview'),
+    lang('base_user_guide') => lang('storage_user_guide_preamble'),
+);
+
 /////////////////////////////////////////////////////////////////////////////
 // Packaging
 /////////////////////////////////////////////////////////////////////////////
