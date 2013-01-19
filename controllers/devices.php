@@ -1,13 +1,13 @@
 <?php
 
 /**
- * Storage controller.
+ * Storage devices controller.
  *
  * @category   Apps
  * @package    Storage
  * @subpackage Controllers
  * @author     ClearFoundation <developer@clearfoundation.com>
- * @copyright  2012 ClearFoundation
+ * @copyright  2013 ClearFoundation
  * @license    http://www.gnu.org/copyleft/gpl.html GNU General Public License version 3 or later
  * @link       http://www.clearfoundation.com/docs/developer/apps/storage/
  */
@@ -34,21 +34,21 @@
 ///////////////////////////////////////////////////////////////////////////////
 
 /**
- * Storage controller.
+ * Storage devices controller.
  *
  * @category   Apps
  * @package    Storage
  * @subpackage Controllers
  * @author     ClearFoundation <developer@clearfoundation.com>
- * @copyright  2012 ClearFoundation
+ * @copyright  2013 ClearFoundation
  * @license    http://www.gnu.org/copyleft/gpl.html GNU General Public License version 3 or later
  * @link       http://www.clearfoundation.com/docs/developer/apps/storage/
  */
 
-class Storage extends ClearOS_Controller
+class Devices extends ClearOS_Controller
 {
     /**
-     * Storage summary view.
+     * Storage mappings overview.
      *
      * @return view
      */
@@ -59,12 +59,54 @@ class Storage extends ClearOS_Controller
         //---------------
 
         $this->lang->load('storage');
+        $this->load->library('storage/Storage_Device');
 
-        // Load views
-        //-----------
+        // Load view data
+        //---------------
 
-        $views = array('storage/devices', 'storage/mappings');
+        try {
+            $data['devices'] = $this->storage_device->get_devices();
+        } catch (Exception $e) {
+            $this->page->view_exception($e);
+            return;
+        }
 
-        $this->page->view_forms($views, lang('storage_app_name'));
+        // Load the views
+        //---------------
+
+        $this->page->view_form('devices/summary', $data, lang('storage_devices'));
+    }
+
+    /**
+     * Storage detail view.
+     *
+     * @param string $device encoded device name
+     *
+     * @return view
+     */
+
+    function view($device)
+    {
+        // Load libraries
+        //---------------
+
+        $this->lang->load('storage');
+        $this->load->library('storage/Storage_Device');
+
+        // Load view data
+        //---------------
+
+        try {
+            $data['device'] = base64_decode(strtr($device, '-_.', '+/='));
+            $data['details'] = $this->storage_device->get_details($data['device']);
+        } catch (Exception $e) {
+            $this->page->view_exception($e);
+            return;
+        }
+
+        // Load the views
+        //---------------
+
+        $this->page->view_form('devices/item', $data, lang('storage_store'));
     }
 }

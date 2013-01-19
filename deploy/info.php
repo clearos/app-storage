@@ -5,7 +5,7 @@
 /////////////////////////////////////////////////////////////////////////////
 
 $app['basename'] = 'storage';
-$app['version'] = '1.4.14';
+$app['version'] = '1.4.15';
 $app['release'] = '1';
 $app['vendor'] = 'ClearFoundation';
 $app['packager'] = 'ClearFoundation';
@@ -20,6 +20,14 @@ $app['description'] = lang('storage_app_description');
 $app['name'] = lang('storage_app_name');
 $app['category'] = lang('base_category_system');
 $app['subcategory'] = lang('base_subcategory_storage');
+
+/////////////////////////////////////////////////////////////////////////////
+// Controllers
+/////////////////////////////////////////////////////////////////////////////
+
+$app['controllers']['storage']['title'] = $app['name'];
+$app['controllers']['devices']['title'] = lang('storage_devices');
+$app['controllers']['mappings']['title'] = lang('storage_mappings');
 
 // Wizard extras
 $app['controllers']['storage']['wizard_name'] = lang('storage_app_name');
@@ -36,6 +44,8 @@ $app['controllers']['storage']['inline_help'] = array(
 $app['core_requires'] = array(
     'app-base >= 1:1.4.7',
     'initscripts',
+    'parted',
+    'util-linux-ng',
 );
 
 $app['core_directory_manifest'] = array(

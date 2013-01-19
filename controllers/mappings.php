@@ -74,7 +74,7 @@ class Mappings extends ClearOS_Controller
         // Load the views
         //---------------
 
-        $this->page->view_form('storage/mappings', $data, lang('storage_mappings'));
+        $this->page->view_form('mappings/summary', $data, lang('storage_mappings'));
     }
 
     /**
@@ -107,6 +107,6 @@ class Mappings extends ClearOS_Controller
         // Load the views
         //---------------
 
-        $this->page->view_form('storage/detail', $data, lang('storage_store'));
+        $this->page->view_form('mappings/item', $data, lang('storage_store'));
     }
 }

@@ -1,11 +1,11 @@
 <?php
 
 /**
- * Storage controller.
+ * Mappings detail view.
  *
- * @category   Apps
+ * @category   ClearOS
  * @package    Storage
- * @subpackage Controllers
+ * @subpackage Views
  * @author     ClearFoundation <developer@clearfoundation.com>
  * @copyright  2012 ClearFoundation
  * @license    http://www.gnu.org/copyleft/gpl.html GNU General Public License version 3 or later
@@ -25,46 +25,32 @@
 // GNU General Public License for more details.
 //
 // You should have received a copy of the GNU General Public License
-// along with this program.  If not, see <http://www.gnu.org/licenses/>.
-//
+// along with this program.  If not, see <http://www.gnu.org/licenses/>.  
+//  
 ///////////////////////////////////////////////////////////////////////////////
 
 ///////////////////////////////////////////////////////////////////////////////
-// C L A S S
+// Load dependencies
 ///////////////////////////////////////////////////////////////////////////////
 
-/**
- * Storage controller.
- *
- * @category   Apps
- * @package    Storage
- * @subpackage Controllers
- * @author     ClearFoundation <developer@clearfoundation.com>
- * @copyright  2012 ClearFoundation
- * @license    http://www.gnu.org/copyleft/gpl.html GNU General Public License version 3 or later
- * @link       http://www.clearfoundation.com/docs/developer/apps/storage/
- */
+$this->lang->load('base');
+$this->lang->load('storage');
 
-class Storage extends ClearOS_Controller
-{
-    /**
-     * Storage summary view.
-     *
-     * @return view
-     */
+///////////////////////////////////////////////////////////////////////////////
+// Form
+///////////////////////////////////////////////////////////////////////////////
 
-    function index()
-    {
-        // Load libraries
-        //---------------
+echo form_open('storage/mappings/view');
+echo form_header(lang('base_information'));
 
-        $this->lang->load('storage');
+echo field_input('mapping', $details['plugin_name'], lang('storage_mapping'), TRUE);
+echo field_input('source', $source, lang('storage_source'), TRUE);
+echo field_input('store', $details['store'], lang('storage_store'), TRUE);
+echo field_input('state_message', $details['state_message'], lang('base_status'), TRUE);
 
-        // Load views
-        //-----------
+echo field_button_set(
+    array(anchor_cancel('/app/storage/mappings'))
+);
 
-        $views = array('storage/devices', 'storage/mappings');
-
-        $this->page->view_forms($views, lang('storage_app_name'));
-    }
-}
+echo form_footer();
+echo form_close();

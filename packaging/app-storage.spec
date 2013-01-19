@@ -1,7 +1,7 @@
 
 Name: app-storage
 Epoch: 1
-Version: 1.4.14
+Version: 1.4.15
 Release: 1%{dist}
 Summary: Storage Manager
 License: GPLv3
@@ -21,6 +21,8 @@ Group: ClearOS/Libraries
 Requires: app-base-core
 Requires: app-base >= 1:1.4.7
 Requires: initscripts
+Requires: parted
+Requires: util-linux-ng
 
 %description core
 The Storage Manager allows you to map large data shares to storage volumes.

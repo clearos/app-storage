@@ -153,6 +153,7 @@ class Storage extends Engine
     /**
      * Performs storage mounts.
      *
+     * @return void
      */
 
     public function do_mount()
@@ -298,6 +299,8 @@ class Storage extends Engine
 
     /**
      * Returns details on store.
+     *
+     * @param string $store_name store name
      *
      * @return array store detail
      */

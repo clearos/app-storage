@@ -59,15 +59,19 @@ clearos_load_language('stroarge');
 
 use \clearos\apps\base\Engine as Engine;
 use \clearos\apps\base\File as File;
+use \clearos\apps\base\Shell as Shell;
 
 clearos_load_library('base/Engine');
 clearos_load_library('base/File');
+clearos_load_library('base/Shell');
 
 // Exceptions
 //-----------
 
 use \Exception as Exception;
 use \clearos\apps\base\Engine_Exception as Engine_Exception;
+
+clearos_load_library('base/Engine_Exception');
 
 ///////////////////////////////////////////////////////////////////////////////
 // C L A S S
@@ -93,13 +97,15 @@ class Storage_Device extends Engine
     // C O N S T A N T S
     ///////////////////////////////////////////////////////////////////////////////
 
-    const PROC_IDE = '/proc/ide';
-    const PROC_MDSTAT = '/proc/mdstat';
-    const ETC_MTAB = '/etc/mtab';
-    const BIN_SWAPON = '/sbin/swapon -s %s';
-    const USB_DEVICES = '/sys/bus/usb/devices';
-    const IDE_DEVICES = '/sys/bus/ide/devices';
-    const SCSI_DEVICES = '/sys/bus/scsi/devices';
+    const FILE_MDSTAT = '/proc/mdstat';
+    const FILE_MTAB = '/etc/mtab';
+    const PATH_IDE = '/proc/ide';
+    const PATH_IDE_DEVICES = '/sys/bus/ide/devices';
+    const PATH_USB_DEVICES = '/sys/bus/usb/devices';
+    const PATH_SCSI_DEVICES = '/sys/bus/scsi/devices';
+    const COMMAND_PARTED = '/sbin/parted';
+    const COMMAND_SFDISK = '/sbin/sfdisk';
+    const COMMAND_SWAPON = '/sbin/swapon -s %s';
 
     ///////////////////////////////////////////////////////////////////////////////
     // V A R I A B L E S
@@ -108,6 +114,7 @@ class Storage_Device extends Engine
     protected $devices = array();
     protected $is_scanned = FALSE;
     protected $mount_point = NULL;
+    protected $types = array();
 
     ///////////////////////////////////////////////////////////////////////////////
     // M E T H O D S
@@ -120,6 +127,13 @@ class Storage_Device extends Engine
     public function __construct()
     {
         clearos_profile(__METHOD__, __LINE__);
+
+        $this->types = array(
+            '82' => lang('storage_swap'),
+            '83' => 'Linux',
+            '8e' => 'LVM',
+            '85' => lang('storage_linux_extended'),
+        );
     }
 
     /**
@@ -156,6 +170,120 @@ class Storage_Device extends Engine
         return $this->mount_point;
     }
 
+    /**
+     * Returns partition table.
+     *
+     * @param string $device device
+     *
+     * @return array partition table information
+     * @throws Engine_Exception
+     */
+
+    function get_details($device)
+    {
+        clearos_profile(__METHOD__, __LINE__);
+
+        // Load hardware details from scan
+        //--------------------------------
+
+        $devices = $this->get_devices();
+
+        $details = $devices[$device];
+
+        // Load information from sfdisk if no partitions
+        //----------------------------------------------
+
+        $shell = new Shell();
+        $shell->execute(self::COMMAND_SFDISK, '-d ' . $device, TRUE);
+        
+        $lines = $shell->get_output();
+
+        if (empty($lines)) {
+            // FIXME: todo
+            $details['interface'] = $matches[2];
+            $details['logical_size'] = $matches[3];
+            $details['physical_size'] = $matches[4];
+            $details['partition_format'] = $matches[5];
+
+            return $details;
+        }
+
+        // Load information from parted if partitions exist
+        //-------------------------------------------------
+
+        // Get mount information
+        $mounts = $this->get_mounts();
+
+        // Run parted
+        $shell = new Shell();
+        $shell->execute(self::COMMAND_PARTED, '-m ' . $device . ' print', TRUE);
+
+        $lines = $shell->get_output();
+
+        $device_regex = preg_quote($device, '/');
+
+        foreach ($lines as $line) {
+            $matches = array();
+
+            if (preg_match("/^$device_regex:([^:]*):([^:]*):([^:]*):([^:]*):([^:]*):([^:]*);/", $line, $matches)) {
+                $details['interface'] = $matches[2];
+                $details['logical_size'] = $matches[3];
+                $details['physical_size'] = $matches[4];
+                $details['partition_format'] = $matches[5];
+
+            } else if (preg_match("/^([0-9]*):([^:]*):([^:]*):([^:]*):([^:]*):([^:]*):([^:]*);/", $line, $matches)) {
+                $details['partitions'][$matches[1]]['start'] = $matches[2];
+                $details['partitions'][$matches[1]]['end'] = $matches[3];
+                $details['partitions'][$matches[1]]['size'] = preg_replace('/[A-Za-z]*$/', '', $matches[4]);
+                $details['partitions'][$matches[1]]['size_units'] = preg_replace('/^[0-9\.]*/', '', $matches[4]);
+                $details['partitions'][$matches[1]]['file_system'] = $matches[5];
+                $details['partitions'][$matches[1]]['unknown'] = $matches[6];
+                $details['partitions'][$matches[1]]['flags'] = $matches[7];
+
+                $details['partitions'][$matches[1]]['is_lvm'] = (preg_match('/lvm/', $matches[7])) ? TRUE : FALSE;
+                $details['partitions'][$matches[1]]['is_bootable'] = (preg_match('/boot/', $matches[7])) ? TRUE : FALSE;
+
+                $partition_device = $device . $matches[1];
+
+                if (array_key_exists($partition_device, $mounts))
+                    $details['partitions'][$matches[1]]['mount_point'] = $mounts[$partition_device]['mount_point'];
+                else
+                    $details['partitions'][$matches[1]]['mount_point'] = NULL;
+            }
+        }
+
+        return $details;
+    }
+
+    /** 
+     * Returns mount information.
+     *
+     * @return array
+     * @throws Engine_Exception
+     */
+
+    public function get_mounts()
+    {
+        clearos_profile(__METHOD__, __LINE__);
+
+        $file = new File(self::FILE_MTAB);
+
+        if (!$file->exists())
+            return array();
+
+        $mounts = array();
+        $lines = $file->get_contents_as_array();
+
+        foreach ($lines as $line) {
+            $details = preg_split('/\s+/', $line);
+            $mounts[$details[0]]['mount_point'] = $details[1];
+            $mounts[$details[0]]['file_system'] = $details[2];
+            $mounts[$details[0]]['options'] = $details[3];
+        }
+    
+        return $mounts;
+    }
+
     /** 
      * Returns software RAID devices.
      *
@@ -167,7 +295,7 @@ class Storage_Device extends Engine
     {
         clearos_profile(__METHOD__, __LINE__);
 
-        if (!($fh = fopen(self::PROC_MDSTAT, 'r')))
+        if (!($fh = fopen(self::FILE_MDSTAT, 'r')))
             return FALSE;
 
         $devices = array();
@@ -207,7 +335,7 @@ class Storage_Device extends Engine
     {
         clearos_profile(__METHOD__, __LINE__);
 
-        $file = new File(self::ETC_MTAB);
+        $file = new File(self::FILE_MTAB);
 
         if (!$file->exists())
             return FALSE;
@@ -239,7 +367,7 @@ class Storage_Device extends Engine
     {
         clearos_profile(__METHOD__, __LINE__);
 
-        if (!($ph = popen(sprintf(self::BIN_SWAPON, $device), 'r')))
+        if (!($ph = popen(sprintf(self::COMMAND_SWAPON, $device), 'r')))
             return FALSE;
 
         while (!feof($ph)) {
@@ -317,6 +445,19 @@ class Storage_Device extends Engine
 
         $atapi = $this->_scan_atapi();
 
+        // The "model" and "vendor" provided by drivers shows unexpected results, e.g.
+        //
+        // A VirtualBox CD-ROM:
+        //   [vendor] => VBOX
+        //   [model] => CD-ROM
+        //
+        // A VirtualBox hard disk:
+        //   [vendor] => ATA
+        //   [model] => VBOX HARDDISK
+        //
+        // Create an "indentifier" field that munges the two together, or
+        // if required in the future, does further munging.
+        
         foreach ($atapi as $parent => $device) {
             if (!isset($device['partition']))
                 continue;
@@ -324,6 +465,7 @@ class Storage_Device extends Engine
             foreach ($device['partition'] as $partition) {
                 $atapi[$partition]['vendor'] = $device['vendor'];
                 $atapi[$partition]['model'] = $device['model'];
+                $atapi[$partition]['identifier'] = $device['vendor'] . ' ' . $device['model'];
                 $atapi[$partition]['type'] = $device['type'];
                 $atapi[$partition]['parent'] = $parent;
             }
@@ -338,6 +480,16 @@ class Storage_Device extends Engine
             if (!isset($device['partition'])) {
                 $scsi[$device['device']]['vendor'] = $device['vendor'];
                 $scsi[$device['device']]['model'] = $device['model'];
+                $scsi[$device['device']]['identifier'] = $device['vendor'] . ' ' . $device['model'];
+
+                // FIXME: discuss with Darryl - blocks-to-bytes
+                if ($device['size_in_blocks'] > 1000000) {
+                    $scsi[$device['device']]['size'] = round(($device['size_in_blocks'] * 512) / (1000000000));
+                    $scsi[$device['device']]['size_units'] = lang('base_gigabytes');
+                } else {
+                    $scsi[$device['device']]['size'] = round(($device['size_in_blocks'] * 512) / 1000000);
+                    $scsi[$device['device']]['size_units'] = lang('base_megabytes');
+                }
 
                 if ($device['bus'] == 'usb')
                     $scsi[$device['device']]['type'] = 'USB';
@@ -350,6 +502,7 @@ class Storage_Device extends Engine
             foreach ($device['partition'] as $partition) {
                 $scsi[$partition]['vendor'] = $device['vendor'];
                 $scsi[$partition]['model'] = $device['model'];
+                $scsi[$partition]['identifier'] = $device['vendor'] . ' ' . $device['model'];
                 $scsi[$device['device']]['parent'] = $device['device'];
 
                 if ($device['bus'] == 'usb')
@@ -382,6 +535,7 @@ class Storage_Device extends Engine
         foreach ($raid_devices as $device => $details) {
             $this->devices[$device]['vendor'] = 'Software';
             $this->devices[$device]['model'] = 'RAID';
+            $this->devices[$device]['identifier'] = $device['vendor'] . ' ' . $device['model'];
             $this->devices[$device]['type'] = $details['type'];
         }
 
@@ -432,11 +586,11 @@ class Storage_Device extends Engine
         $scan = array();
 
         // Find IDE devices that match: %d.%d
-        $entries = $this->_scan_directory(self::IDE_DEVICES, '/^\d.\d$/');
+        $entries = $this->_scan_directory(self::PATH_IDE_DEVICES, '/^\d.\d$/');
 
         // Scan all ATAPI/IDE devices.
         foreach ($entries as $entry) {
-            $path = self::IDE_DEVICES . "/$entry";
+            $path = self::PATH_IDE_DEVICES . "/$entry";
             $block_devices = $this->_scan_directory("$path/block", '/^dev$/');
 
             if (empty($block_devices)) {
@@ -456,7 +610,7 @@ class Storage_Device extends Engine
             $info['type'] = 'IDE/ATAPI';
 
             try {
-                $file = new File(self::PROC_IDE . "/$block/model", TRUE);
+                $file = new File(self::PATH_IDE . "/$block/model", TRUE);
                 if ($file->exists())
                     list($info['vendor'], $info['model']) = preg_split('/ /', $file->get_contents(), 2);
             } catch (Exception $e) {
@@ -491,11 +645,11 @@ class Storage_Device extends Engine
 
         try {
             // Find USB devices that match: %d-%d
-            $entries = $this->_scan_directory(self::USB_DEVICES, '/^\d-\d$/');
+            $entries = $this->_scan_directory(self::PATH_USB_DEVICES, '/^\d-\d$/');
 
             // Walk through the expected USB -> SCSI /sys paths.
             foreach ($entries as $entry) {
-                $path = self::USB_DEVICES . "/$entry";
+                $path = self::PATH_USB_DEVICES . "/$entry";
                 $devid = $this->_scan_directory($path, "/^$entry:\d\.\d$/");
                 if (empty($devid))
                     continue;
@@ -564,13 +718,13 @@ class Storage_Device extends Engine
             }
 
             // Find SCSI devices that match: %d:%d:%d:%d
-            $entries = $this->_scan_directory(self::SCSI_DEVICES, '/^\d:\d:\d:\d$/');
+            $entries = $this->_scan_directory(self::PATH_SCSI_DEVICES, '/^\d:\d:\d:\d$/');
 
             // Scan all SCSI devices.
             if (! empty($entries)) {
                 foreach ($entries as $entry) {
                     $block = 'block';
-                    $path = self::SCSI_DEVICES . "/$entry";
+                    $path = self::PATH_SCSI_DEVICES . "/$entry";
                     $devname = $this->_scan_directory("$path/block", '/^[a-z0-9]*$/');
 
                     if (count($devname) != 1)
@@ -592,7 +746,6 @@ class Storage_Device extends Engine
                         continue;
 
                     $device['model'] = chop(fgets($fh, 4096));
-                    //$device['product'] = $device['model'];
                     fclose($fh);
 
                     if (!($fh = fopen("$path/$block/" . $devname[0] . "/dev", 'r')))
@@ -600,6 +753,13 @@ class Storage_Device extends Engine
     
                     $device['nodes'] = chop(fgets($fh, 4096));
                     fclose($fh);
+
+                    if (!($fh = fopen("$path/$block/" . $devname[0] . "/size", 'r')))
+                        continue;
+    
+                    $device['size_in_blocks'] = chop(fgets($fh, 4096));
+                    fclose($fh);
+
                     $device['path'] = "$path/$block";
                     $device['bus'] = 'scsi';
 

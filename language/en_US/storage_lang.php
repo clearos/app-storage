@@ -18,3 +18,15 @@ $lang['storage_wizard_help'] = 'If you plan on storing a significant amount of d
 $lang['storage_big_picture'] = 'Big Picture';
 $lang['storage_inline_help_overview'] = 'Many apps require significant storage space for user data: web proxy caches, network shares and databases are just some examples.  The Storage Manager provides a way to isolate this user data on a seperate partition.';
 $lang['storage_user_guide_preamble'] = 'Hello beta users!  Please read the <a target="_blank" href="http://www.clearfoundation.com/docs/release_info/clearos_community_6.4.0/beta_1_release_information">release notes</a> for more information.'; // FIXME
+$lang['storage_devices'] = 'Devices';
+$lang['storage_device'] = 'Device';
+$lang['storage_model'] = 'Model';
+$lang['storage_type'] = 'Type';
+$lang['storage_size'] = 'Size';
+$lang['storage_bootable'] = 'Bootable';
+$lang['storage_file_system'] = 'File System';
+$lang['storage_lvm'] = 'LVM';
+$lang['storage_mount'] = 'Mount';
+$lang['storage_partitions'] = 'Partitions';
+$lang['storage_no_partitions_found_create_data_drive'] = 'No partitions were found.  Would you like to create a data drive?';
+$lang['storage_create_data_drive'] = 'Create Data Drive';
