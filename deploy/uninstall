@@ -1,0 +1,11 @@
+#!/bin/sh
+
+if [ -e /var/clearos/storage/fstab ]; then
+    logger -p local6.notice -t installer "app-storage-core - removing cached fstab file"
+    rm -f /var/clearos/storage/fstab
+fi
+
+if [ -d /var/clearos/storage/state ]; then
+    logger -p local6.notice -t installer "app-storage-core - removing state files"
+    rm -f /var/clearos/storage/state/*
+fi
