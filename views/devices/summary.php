@@ -43,7 +43,8 @@ $this->lang->load('storage');
 $headers = array(
     lang('storage_device'),
     lang('storage_model'),
-    lang('storage_size')
+    lang('storage_size'),
+    lang('storage_in_use')
 );
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -57,20 +58,28 @@ $anchors = array();
 ///////////////////////////////////////////////////////////////////////////////
 
 foreach ($devices as $device => $details) {
-        $device_encoded = strtr(base64_encode($device),  '+/=', '-_.');
+    $device_encoded = strtr(base64_encode($device),  '+/=', '-_.');
 
-        $item['title'] = $device;
-        $item['action'] = '';
-        $item['anchors'] = button_set(
-            array(anchor_custom('/app/storage/devices/view/' . $device_encoded, lang('base_view_details')))
-        );
-        $item['details'] = array(
-            $device,
-            $details['identifier'],
-            $details['size'] . ' ' . $details['size_units']
-        );
+    // Skip removable drives
+    if ($details['removable'])
+        continue;
 
-        $items[] = $item;
+    // TODO: discuss icon strategy
+    $in_use_icon = ($details['in_use']) ? '<span class="theme-icon-ok"> </span>' : '';
+
+    $item['title'] = $device;
+    $item['action'] = '';
+    $item['anchors'] = button_set(
+        array(anchor_custom('/app/storage/devices/view/' . $device_encoded, lang('base_view_details')))
+    );
+    $item['details'] = array(
+        $device,
+        $details['identifier'],
+        $details['size'] . ' ' . $details['size_units'],
+        $in_use_icon
+    );
+
+    $items[] = $item;
 }
 
 sort($items);

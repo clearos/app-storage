@@ -70,8 +70,10 @@ clearos_load_library('base/Shell');
 
 use \Exception as Exception;
 use \clearos\apps\base\Engine_Exception as Engine_Exception;
+use \clearos\apps\base\Validation_Exception as Validation_Exception;
 
 clearos_load_library('base/Engine_Exception');
+clearos_load_library('base/Validation_Exception');
 
 ///////////////////////////////////////////////////////////////////////////////
 // C L A S S
@@ -106,6 +108,7 @@ class Storage_Device extends Engine
     const COMMAND_PARTED = '/sbin/parted';
     const COMMAND_SFDISK = '/sbin/sfdisk';
     const COMMAND_SWAPON = '/sbin/swapon -s %s';
+    const COMMAND_MKFS = '/sbin/mkfs';
 
     ///////////////////////////////////////////////////////////////////////////////
     // V A R I A B L E S
@@ -113,8 +116,8 @@ class Storage_Device extends Engine
 
     protected $devices = array();
     protected $is_scanned = FALSE;
-    protected $mount_point = NULL;
     protected $types = array();
+    protected $file_system_types = array();
 
     ///////////////////////////////////////////////////////////////////////////////
     // M E T H O D S
@@ -128,6 +131,11 @@ class Storage_Device extends Engine
     {
         clearos_profile(__METHOD__, __LINE__);
 
+        $this->file_system_types = array(
+            'ext3' => 'ext3',
+            'ext4' => 'ext4',
+        );
+
         $this->types = array(
             '82' => lang('storage_swap'),
             '83' => 'Linux',
@@ -137,122 +145,92 @@ class Storage_Device extends Engine
     }
 
     /**
-     * Retrieves a list of all storage devices.
+     * Creates data drive.
      *
-     * @param boolean $mounted mounted devices only
-     * @param boolean $swap    swap devices
+     * @param string $device device
+     * @param string $type   file system type
      *
      * @return array storage devices
      * @throws Engine_Exception
      */
 
-    public function get_devices($mounted = TRUE, $swap = FALSE)
+    public function create_data_drive($device, $type)
+    {
+        clearos_profile(__METHOD__, __LINE__);
+
+        Validation_Exception::is_valid($this->validate_device($device));
+        Validation_Exception::is_valid($this->validate_file_system_type($type));
+    }
+
+    /**
+     * Returns information on storage device.
+     *
+     * @param string $device device
+     *
+     * @return array storage device information
+     * @throws Engine_Exception
+     */
+
+    public function get_device_details($device)
+    {
+        clearos_profile(__METHOD__, __LINE__);
+
+        Validation_Exception::is_valid($this->validate_device($device));
+
+        if (! $this->is_scanned)
+            $this->_scan();
+
+        return $this->devices[$device];
+    }
+
+    /**
+     * Returns information on all storage devices.
+     *
+     * @return array storage devices
+     * @throws Engine_Exception
+     */
+
+    public function get_devices()
     {
         clearos_profile(__METHOD__, __LINE__);
 
         if (! $this->is_scanned)
-            $this->_scan($mounted, $swap);
+            $this->_scan();
 
         return $this->devices;
     }
 
     /**
-     * Retrieves mount point location set by last is_mounted() call.
+     * Returns supported file system types.
      *
-     * @return string mount point
+     * @return array file system types
      * @throws Engine_Exception
      */
 
-    public function get_mount_point()
+    public function get_file_system_types()
     {
         clearos_profile(__METHOD__, __LINE__);
 
-        return $this->mount_point;
+        return $this->file_system_types;
     }
 
-    /**
-     * Returns partition table.
+    /** 
+     * Returns mount point of device if one exists.
      *
-     * @param string $device device
+     * @param string $device device name
      *
-     * @return array partition table information
+     * @return string mount point of given device if one exists
      * @throws Engine_Exception
      */
 
-    function get_details($device)
+    public function get_mount_point($device)
     {
         clearos_profile(__METHOD__, __LINE__);
 
-        // Load hardware details from scan
-        //--------------------------------
-
-        $devices = $this->get_devices();
-
-        $details = $devices[$device];
-
-        // Load information from sfdisk if no partitions
-        //----------------------------------------------
-
-        $shell = new Shell();
-        $shell->execute(self::COMMAND_SFDISK, '-d ' . $device, TRUE);
-        
-        $lines = $shell->get_output();
-
-        if (empty($lines)) {
-            // FIXME: todo
-            $details['interface'] = $matches[2];
-            $details['logical_size'] = $matches[3];
-            $details['physical_size'] = $matches[4];
-            $details['partition_format'] = $matches[5];
-
-            return $details;
-        }
-
-        // Load information from parted if partitions exist
-        //-------------------------------------------------
-
-        // Get mount information
         $mounts = $this->get_mounts();
 
-        // Run parted
-        $shell = new Shell();
-        $shell->execute(self::COMMAND_PARTED, '-m ' . $device . ' print', TRUE);
-
-        $lines = $shell->get_output();
-
-        $device_regex = preg_quote($device, '/');
-
-        foreach ($lines as $line) {
-            $matches = array();
-
-            if (preg_match("/^$device_regex:([^:]*):([^:]*):([^:]*):([^:]*):([^:]*):([^:]*);/", $line, $matches)) {
-                $details['interface'] = $matches[2];
-                $details['logical_size'] = $matches[3];
-                $details['physical_size'] = $matches[4];
-                $details['partition_format'] = $matches[5];
-
-            } else if (preg_match("/^([0-9]*):([^:]*):([^:]*):([^:]*):([^:]*):([^:]*):([^:]*);/", $line, $matches)) {
-                $details['partitions'][$matches[1]]['start'] = $matches[2];
-                $details['partitions'][$matches[1]]['end'] = $matches[3];
-                $details['partitions'][$matches[1]]['size'] = preg_replace('/[A-Za-z]*$/', '', $matches[4]);
-                $details['partitions'][$matches[1]]['size_units'] = preg_replace('/^[0-9\.]*/', '', $matches[4]);
-                $details['partitions'][$matches[1]]['file_system'] = $matches[5];
-                $details['partitions'][$matches[1]]['unknown'] = $matches[6];
-                $details['partitions'][$matches[1]]['flags'] = $matches[7];
-
-                $details['partitions'][$matches[1]]['is_lvm'] = (preg_match('/lvm/', $matches[7])) ? TRUE : FALSE;
-                $details['partitions'][$matches[1]]['is_bootable'] = (preg_match('/boot/', $matches[7])) ? TRUE : FALSE;
-
-                $partition_device = $device . $matches[1];
-
-                if (array_key_exists($partition_device, $mounts))
-                    $details['partitions'][$matches[1]]['mount_point'] = $mounts[$partition_device]['mount_point'];
-                else
-                    $details['partitions'][$matches[1]]['mount_point'] = NULL;
-            }
-        }
-
-        return $details;
+        if (array_key_exists($device, $mounts))
+            return $mounts[$device]['mount_point'];
     }
 
     /** 
@@ -282,6 +260,110 @@ class Storage_Device extends Engine
         }
     
         return $mounts;
+    }
+
+    /**
+     * Returns partition table.
+     *
+     * @param string $device device
+     *
+     * @return array partition table information
+     * @throws Engine_Exception
+     */
+
+    public function get_partition_info($device)
+    {
+        clearos_profile(__METHOD__, __LINE__);
+
+        // Load information from sfdisk if no partitions
+        //----------------------------------------------
+
+        $options['validate_exit_code'] = FALSE;
+        $options['env'] = 'LANG=en_US';
+
+        $shell = new Shell();
+        $retval = $shell->execute(self::COMMAND_SFDISK, '-d ' . $device, TRUE, $options);
+        $lines = $shell->get_output();
+
+        if ($retval != 0) {
+            // Must be a better way to detect CD-ROM devices with no disks
+            foreach ($lines as $line) {
+                if (preg_match('/No medium found/', $line))
+                    return array();
+            }
+
+            $has_partitions = FALSE;
+        } else {
+            $has_partitions = (empty($lines)) ? FALSE : TRUE;
+        }
+
+        // Load information from parted if partitions exist
+        //-------------------------------------------------
+        // The parted command shows partitionless disks the same way
+        // a single partition is shown (though the partition type is "loop"
+        // instead of "msdos").  For now, we'll identify this whole disk
+        // partitioning as "partition 0" in the partition list.
+
+        // Get mount information
+        $mounts = $this->get_mounts();
+
+        // Run parted
+        try {
+            $shell = new Shell();
+            $shell->execute(self::COMMAND_PARTED, '-m ' . $device . ' print', TRUE);
+        } catch (Exception $e) {
+            $details['interface'] = '';
+            $details['logical_size'] = '';
+            $details['physical_size'] = '';
+            $details['partition_format'] = '';
+
+            return $details;
+        }
+
+        $lines = $shell->get_output();
+
+        $device_regex = preg_quote($device, '/');
+
+        foreach ($lines as $line) {
+            $matches = array();
+
+            if (preg_match("/^$device_regex:([^:]*):([^:]*):([^:]*):([^:]*):([^:]*):([^:]*);/", $line, $matches)) {
+                $details['table']['interface'] = $matches[2];
+                $details['table']['logical_size'] = $matches[3];
+                $details['table']['physical_size'] = $matches[4];
+                $details['table']['partition'] = $matches[5];
+
+            } else if (preg_match("/^([0-9]*):([^:]*):([^:]*):([^:]*):([^:]*):([^:]*):([^:]*);/", $line, $matches)) {
+                if ($has_partitions) {
+                    $partition_num = $matches[1];
+                    $partition_device = $device . $partition_num;
+                } else {
+                    $partition_num = 0;
+                    $partition_device = $device;
+                }
+
+                $details['partitions'][$partition_num]['start'] = $matches[2];
+                $details['partitions'][$partition_num]['end'] = $matches[3];
+                $details['partitions'][$partition_num]['size'] = preg_replace('/[A-Za-z]*$/', '', $matches[4]);
+                $details['partitions'][$partition_num]['size_units'] = preg_replace('/^[0-9\.]*/', '', $matches[4]);
+                $details['partitions'][$partition_num]['file_system'] = $matches[5];
+                $details['partitions'][$partition_num]['unknown'] = $matches[6];
+                $details['partitions'][$partition_num]['flags'] = $matches[7];
+
+                $details['partitions'][$partition_num]['is_lvm'] = (preg_match('/lvm/', $matches[7])) ? TRUE : FALSE;
+                $details['partitions'][$partition_num]['is_bootable'] = (preg_match('/boot/', $matches[7])) ? TRUE : FALSE;
+
+                if (array_key_exists($partition_device, $mounts)) {
+                    $details['partitions'][$partition_num]['mount_point'] = $mounts[$partition_device]['mount_point'];
+                    $details['partitions'][$partition_num]['is_mounted'] = TRUE;
+                } else {
+                    $details['partitions'][$partition_num]['mount_point'] = NULL;
+                    $details['partitions'][$partition_num]['is_mounted'] = FALSE;
+                }
+            }
+        }
+
+        return $details;
     }
 
     /** 
@@ -320,38 +402,6 @@ class Storage_Device extends Engine
         fclose($fh);
 
         return $devices;
-    }
-
-    /** 
-     * Checks state of mount.
-     *
-     * @param string $device device name
-     *
-     * @return boolean TRUE if mounted
-     * @throws Engine_Exception
-     */
-
-    public function is_mounted($device)
-    {
-        clearos_profile(__METHOD__, __LINE__);
-
-        $file = new File(self::FILE_MTAB);
-
-        if (!$file->exists())
-            return FALSE;
-
-        $lines = $file->get_contents_as_array();
-
-        foreach ($lines as $line) {
-            list($name, $this->mount_point) = explode(' ', $line);
-
-            if ($name == $device)
-                return TRUE;
-        }
-
-        $this->mount_point = NULL;
-
-        return FALSE;
     }
 
     /** 
@@ -426,24 +476,57 @@ class Storage_Device extends Engine
     }
 
     ///////////////////////////////////////////////////////////////////////////////
+    // V A L I D A T I O N   R O U T I N E S
+    ///////////////////////////////////////////////////////////////////////////////
+
+    /**
+     * Validation routine for device.
+     *
+     * @param string $device device
+     *
+     * @return string error message if device is invalid
+     */
+
+    public function validate_device($device)
+    {
+        clearos_profile(__METHOD__, __LINE__);
+
+        $devices = $this->get_devices();
+
+        if (!array_key_exists($device, $devices))
+            return lang('storage_device_invalid');
+    }
+
+    /**
+     * Validation routine for file system type.
+     *
+     * @param string $type file system type
+     *
+     * @return string error message if file system type is invalid
+     */
+
+    public function validate_file_system_type($type)
+    {
+        clearos_profile(__METHOD__, __LINE__);
+
+        if (!array_key_exists($type, $this->file_system_types))
+            return lang('storage_file_system_type_invalid');
+    }
+
+    ///////////////////////////////////////////////////////////////////////////////
     // P R I V A T E   M E T H O D S
     ///////////////////////////////////////////////////////////////////////////////
 
     /**
      * Scans for devices.
      *   
-     * @param boolean $mounted mounted devices only
-     * @param boolean $swap    swap devices
-     *
      * @access private
      * @return void
      */
 
-    private function _scan($mounted, $swap)
+    private function _scan()
     {
         clearos_profile(__METHOD__, __LINE__);
-
-        $atapi = $this->_scan_atapi();
 
         // The "model" and "vendor" provided by drivers shows unexpected results, e.g.
         //
@@ -455,10 +538,16 @@ class Storage_Device extends Engine
         //   [vendor] => ATA
         //   [model] => VBOX HARDDISK
         //
-        // Create an "indentifier" field that munges the two together, or
-        // if required in the future, does further munging.
+        // Create an "indentifier" field that munges the two together.
         
-        foreach ($atapi as $parent => $device) {
+        // ATAPI Scan
+        //-----------
+
+        $scan = $this->_scan_atapi();
+
+        $atapi = array();
+
+        foreach ($scan as $parent => $device) {
             if (!isset($device['partition']))
                 continue;
 
@@ -469,20 +558,22 @@ class Storage_Device extends Engine
                 $atapi[$partition]['type'] = $device['type'];
                 $atapi[$partition]['parent'] = $parent;
             }
-
-            unset($atapi[$parent]);
         }
 
-        $devices = $this->_scan_scsi();
+        // SCSI Scan
+        //----------
+
+        $scan = $this->_scan_scsi();
+
         $scsi = array();
 
-        foreach ($devices as $device) {
+        foreach ($scan as $device) {
             if (!isset($device['partition'])) {
                 $scsi[$device['device']]['vendor'] = $device['vendor'];
                 $scsi[$device['device']]['model'] = $device['model'];
+                $scsi[$device['device']]['removable'] = $device['removable'];
                 $scsi[$device['device']]['identifier'] = $device['vendor'] . ' ' . $device['model'];
 
-                // FIXME: discuss with Darryl - blocks-to-bytes
                 if ($device['size_in_blocks'] > 1000000) {
                     $scsi[$device['device']]['size'] = round(($device['size_in_blocks'] * 512) / (1000000000));
                     $scsi[$device['device']]['size_units'] = lang('base_gigabytes');
@@ -495,26 +586,14 @@ class Storage_Device extends Engine
                     $scsi[$device['device']]['type'] = 'USB';
                 else
                     $scsi[$device['device']]['type'] = 'SCSI/SATA';
-
-                continue;
             }
-
-            foreach ($device['partition'] as $partition) {
-                $scsi[$partition]['vendor'] = $device['vendor'];
-                $scsi[$partition]['model'] = $device['model'];
-                $scsi[$partition]['identifier'] = $device['vendor'] . ' ' . $device['model'];
-                $scsi[$device['device']]['parent'] = $device['device'];
-
-                if ($device['bus'] == 'usb')
-                    $scsi[$partition]['type'] = 'USB';
-                else
-                    $scsi[$partition]['type'] = 'SCSI/SATA';
-            }
-
-            unset($scsi[$device['device']]);
         }
 
         $this->devices = array_merge($atapi, $scsi);
+
+        // Software RAID
+        //--------------
+        // FIXME: not verified in 6
 
         $raid_devices = $this->get_software_raid_devices();
         $purge = array();
@@ -539,24 +618,41 @@ class Storage_Device extends Engine
             $this->devices[$device]['type'] = $details['type'];
         }
 
+        // Add partition information
+        // Add "in_use" flag (i.e. check if any partition is in use)
+        //----------------------------------------------------------
+
         foreach ($this->devices as $device => $details) {
-            $this->devices[$device]['mounted'] = $this->is_mounted($device);
-            if ($this->devices[$device]['mounted'])
-                $this->devices[$device]['mount_point'] = $this->mount_point;
+            $this->devices[$device]['partitioning'] = $this->get_partition_info($device);
+            $this->devices[$device]['in_use'] = FALSE;
+
+            if (!empty($this->devices[$device]['partitioning']['partitions'])) {
+                foreach ($this->devices[$device]['partitioning']['partitions'] as $id => $details) {
+                    if ($details['is_mounted']) {
+                        $this->devices[$device]['in_use'] = TRUE;
+                        break;
+                    }
+                }
+            }
+    
         }
 
+        // Purge unwanted devices
+        //-----------------------
+
+        /*
         $purge = array();
 
-        if (!$mounted) {
+        if ($hide_in_use) {
             foreach ($this->devices as $device => $details) {
-                if (!$details['mounted'])
+                if (!$details['in_use'])
                     continue;
 
                 $purge[] = $device;
             }
         }
 
-        if (!$swap) {
+        if ($hide_swap) {
             foreach ($this->devices as $device => $details) {
                 if (!$this->is_swap($device))
                     continue;
@@ -565,7 +661,9 @@ class Storage_Device extends Engine
             }
         }
 
-        foreach ($purge as $device) unset($this->devices[$device]);
+        foreach ($purge as $device)
+            unset($this->devices[$device]);
+        */
 
         ksort($this->devices);
 
@@ -758,6 +856,12 @@ class Storage_Device extends Engine
                         continue;
     
                     $device['size_in_blocks'] = chop(fgets($fh, 4096));
+                    fclose($fh);
+
+                    if (!($fh = fopen("$path/$block/" . $devname[0] . "/removable", 'r')))
+                        continue;
+    
+                    $device['removable'] = (chop(fgets($fh, 4096))) ? TRUE : FALSE;
                     fclose($fh);
 
                     $device['path'] = "$path/$block";

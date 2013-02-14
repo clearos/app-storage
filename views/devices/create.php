@@ -1,13 +1,13 @@
 <?php
 
 /**
- * Mappings detail view.
+ * Create data drive view.
  *
  * @category   ClearOS
  * @package    Storage
  * @subpackage Views
  * @author     ClearFoundation <developer@clearfoundation.com>
- * @copyright  2012 ClearFoundation
+ * @copyright  2013 ClearFoundation
  * @license    http://www.gnu.org/copyleft/gpl.html GNU General Public License version 3 or later
  * @link       http://www.clearfoundation.com/docs/developer/apps/storage/
  */
@@ -40,16 +40,26 @@ $this->lang->load('storage');
 // Form
 ///////////////////////////////////////////////////////////////////////////////
 
-echo form_open('storage/mappings/view');
-echo form_header(lang('base_information'));
+$device_encoded = strtr(base64_encode($device),  '+/=', '-_.');
 
-echo field_input('mapping', $details['plugin_name'], lang('storage_mapping'), TRUE);
-echo field_input('source', $source, lang('storage_source'), TRUE);
-echo field_input('store', $details['store'], lang('storage_store'), TRUE);
-echo field_input('state_message', $details['state_message'], lang('base_status'), TRUE);
+echo form_open('storage/devices/create_data_drive/' . $device_encoded);
+echo form_header(lang('base_create'));
+
+echo fieldset_header(lang('storage_device'));
+echo field_view(lang('storage_device'), $device, lang('storage_size'));
+echo field_input('size', $details['size'] . ' ' . $details['size_units'], lang('storage_size'), TRUE);
+echo field_input('identpifier', $details['identifier'], lang('storage_model'), TRUE);
+echo fieldset_footer();
+
+echo fieldset_header(lang('storage_device'));
+echo field_dropdown('type', $types, $type, lang('storage_file_system'));
+echo fieldset_footer();
 
 echo field_button_set(
-    array(anchor_cancel('/app/storage/mappings'))
+    array(
+        form_submit_custom('submit', lang('base_create')),
+        anchor_cancel('/app/storage/devices')
+    )
 );
 
 echo form_footer();

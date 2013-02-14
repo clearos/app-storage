@@ -78,6 +78,59 @@ class Devices extends ClearOS_Controller
     }
 
     /**
+     * Creates a data drive.
+     *
+     * @param string $device encoded device name
+     *
+     * @return view
+     */
+
+    function create_data_drive($device)
+    {
+        $device_decoded = base64_decode(strtr($device, '-_.', '+/='));
+
+        // Load libraries
+        //---------------
+
+        $this->lang->load('storage');
+        $this->load->library('storage/Storage_Device');
+
+        // Handle form submit
+        //-------------------
+
+        if ($this->input->post('submit')) {
+            try {
+                $this->storage_device->create_data_drive($device_decoded, $this->input->post('type'));
+
+                $this->page->set_status_added();
+            } catch (Exception $e) {
+                $this->page->view_exception($e);
+                return;
+            }
+        }
+
+        // Load view data
+        //---------------
+
+        try {
+            $data['device'] = $device_decoded;
+            $data['details'] = $this->storage_device->get_device_details($data['device']);
+            $data['types'] = $this->storage_device->get_file_system_types();
+
+            // Set default
+            $data['type'] = 'ext4';
+        } catch (Exception $e) {
+            $this->page->view_exception($e);
+            return;
+        }
+
+        // Load the views
+        //---------------
+
+        $this->page->view_form('devices/create', $data, lang('base_create'));
+    }
+
+    /**
      * Storage detail view.
      *
      * @param string $device encoded device name
@@ -98,7 +151,7 @@ class Devices extends ClearOS_Controller
 
         try {
             $data['device'] = base64_decode(strtr($device, '-_.', '+/='));
-            $data['details'] = $this->storage_device->get_details($data['device']);
+            $data['details'] = $this->storage_device->get_device_details($data['device']);
         } catch (Exception $e) {
             $this->page->view_exception($e);
             return;

@@ -40,9 +40,12 @@ $this->lang->load('storage');
 // General information
 ///////////////////////////////////////////////////////////////////////////////
 
+$device_encoded = strtr(base64_encode($device),  '+/=', '-_.');
+
 echo form_open('storage/devices/view');
 echo form_header(lang('base_settings'));
 
+echo field_view(lang('storage_device'), $device, lang('storage_size'));
 echo field_input('size', $details['size'] . ' ' . $details['size_units'], lang('storage_size'), TRUE);
 echo field_input('identifier', $details['identifier'], lang('storage_model'), TRUE);
 
@@ -50,19 +53,26 @@ echo form_footer();
 echo form_close();
 
 ///////////////////////////////////////////////////////////////////////////////
-// Partitions
+// Show create partition if disk is partitionless and not mounted
 ///////////////////////////////////////////////////////////////////////////////
 
-if (empty($details['partitions'])) {
+if (!$details['in_use']) {
+    $device_encoded = strtr(base64_encode($device),  '+/=', '-_.');
+
     echo infobox_highlight(
         lang('base_information'), 
         lang('storage_no_partitions_found_create_data_drive') . '<br>' . 
         '<p align="center">' .
-        anchor_custom('/app/storage/devices/create_store', lang('storage_create_data_drive')) . ' ' . 
+        anchor_custom('/app/storage/devices/create_data_drive/' . $device_encoded, lang('storage_create_data_drive')) . ' ' . 
         anchor_custom('/app/storage', lang('base_return_to_summary')) . '</p>'
     );
     return;
 }
+
+///////////////////////////////////////////////////////////////////////////////
+// Partitions
+///////////////////////////////////////////////////////////////////////////////
+
 $headers = array(
     '',
     lang('storage_size'),
@@ -73,16 +83,15 @@ $headers = array(
 
 $anchors = array(anchor_custom('/app/storage', lang('base_return_to_summary')));
 
-foreach ($details['partitions'] as $id => $partition_info) {
+foreach ($details['partitioning']['partitions'] as $id => $partition_info) {
 
     // TODO: discuss icon strategy
     $bootable_icon = ($partition_info['is_bootable']) ? '<span class="theme-icon-ok"> </span>' : '';
 
-    if (empty($partition_info['mount_point'])) {
+    if (empty($partition_info['mount_point']))
         $mount = ($partition_info['is_lvm']) ? lang('storage_lvm') : '';
-    } else {
+    else
         $mount = $partition_info['mount_point'];
-    }
 
     $item['title'] = $device;
     $item['action'] = '';

@@ -30,3 +30,4 @@ $lang['storage_mount'] = 'Mount';
 $lang['storage_partitions'] = 'Partitions';
 $lang['storage_no_partitions_found_create_data_drive'] = 'No partitions were found.  Would you like to create a data drive?';
 $lang['storage_create_data_drive'] = 'Create Data Drive';
+$lang['storage_in_use'] = 'In Use';
