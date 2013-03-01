@@ -1,5 +1,8 @@
 #!/bin/sh
 
-/usr/sbin/addsudo /sbin/mkfs app-storage-core
+/usr/sbin/addsudo /sbin/mkfs.ext4 app-storage-core
+/usr/sbin/addsudo /sbin/mkfs.ext3 app-storage-core
 /usr/sbin/addsudo /sbin/parted app-storage-core
 /usr/sbin/addsudo /sbin/sfdisk app-storage-core
+/usr/sbin/addsudo /usr/sbin/app-storage-create app-storage-core
+

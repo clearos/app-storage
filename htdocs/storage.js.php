@@ -37,6 +37,12 @@ $bootstrap = getenv('CLEAROS_BOOTSTRAP') ? getenv('CLEAROS_BOOTSTRAP') : '/usr/c
 require_once $bootstrap . '/bootstrap.php';
 
 ///////////////////////////////////////////////////////////////////////////////
+// T R A N S L A T I O N S
+///////////////////////////////////////////////////////////////////////////////
+
+clearos_load_language('base');
+
+///////////////////////////////////////////////////////////////////////////////
 // J A V A S C R I P T
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -45,12 +51,65 @@ header('Content-Type:application/x-javascript');
 
 $(document).ready(function() {
 
+    // Translations
+    //-------------
+
+    lang_initializing = '<?php echo lang("base_initializing"); ?>';
+    lang_success = '<?php echo lang("openldap_directory_directory_updated"); ?>';
+
     // Wizard next button handling
     //----------------------------
 
     $("#wizard_nav_next").click(function(){
         window.location = '/app/base/wizard/next_step';
     });
+
+    if (($(location).attr('href').match('.*\/devices$') == null)) {
+        $('#theme_wizard_nav_next').hide();
+        $('#theme_wizard_nav_previous').hide();
+    }
+
+    // Manage storage action
+    //----------------------
+
+    if ($("#storage_status").length != 0) {
+        getStorageStatus();
+    }
 });
+
+///////////////////////////////////////////////////////////////////////////////
+// F U N C T I O N S
+///////////////////////////////////////////////////////////////////////////////
+
+/**
+ * Returns storage status.
+ */
+
+function getStorageStatus() {
+    $.ajax({
+        url: '/app/storage/devices/get_data_drive_state',
+        method: 'GET',
+        dataType: 'json',
+        success : function(payload) {
+            window.setTimeout(getStorageStatus, 2000);
+            showStorageStatus(payload);
+        },
+        error: function (XMLHttpRequest, textStatus, errorThrown) {
+            window.setTimeout(getStorageStatus, 2000);
+        }
+
+    });
+}
+
+/**
+ * Displays directory information from Ajax request.
+ */
+
+function showStorageStatus(payload) {
+    if (payload.state == 'initializing')
+        $("#storage_status").html('<div class="theme-loading-normal">' + lang_initializing + '</div>');
+    else
+        window.location = '/app/storage/devices/index';
+}
 
 // vim: ts=4 syntax=javascript

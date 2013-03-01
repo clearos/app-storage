@@ -1,7 +1,7 @@
 
 Name: app-storage
 Epoch: 1
-Version: 1.4.15
+Version: 1.4.19
 Release: 1%{dist}
 Summary: Storage Manager
 License: GPLv3
@@ -40,8 +40,10 @@ cp -r * %{buildroot}/usr/clearos/apps/storage/
 install -d -m 0755 %{buildroot}/etc/clearos/storage.d
 install -d -m 0755 %{buildroot}/store
 install -d -m 0755 %{buildroot}/var/clearos/storage
+install -d -m 0775 %{buildroot}/var/clearos/storage/lock
 install -d -m 0755 %{buildroot}/var/clearos/storage/plugins
 install -d -m 0755 %{buildroot}/var/clearos/storage/state
+install -D -m 0755 packaging/app-storage-create %{buildroot}/usr/sbin/app-storage-create
 install -D -m 0755 packaging/storage %{buildroot}/usr/sbin/storage
 install -D -m 0644 packaging/storage.conf %{buildroot}/etc/clearos/storage.conf
 install -D -m 0755 packaging/storage.init %{buildroot}/etc/rc.d/init.d/storage
@@ -87,11 +89,13 @@ exit 0
 %dir /etc/clearos/storage.d
 %dir /store
 %dir /var/clearos/storage
+%dir %attr(0775,root,webconfig) /var/clearos/storage/lock
 %dir /var/clearos/storage/plugins
 %dir /var/clearos/storage/state
 /usr/clearos/apps/storage/deploy
 /usr/clearos/apps/storage/language
 /usr/clearos/apps/storage/libraries
+/usr/sbin/app-storage-create
 /usr/sbin/storage
 %config(noreplace) /etc/clearos/storage.conf
 /etc/rc.d/init.d/storage

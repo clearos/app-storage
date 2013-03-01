@@ -44,7 +44,8 @@ $headers = array(
     lang('storage_device'),
     lang('storage_model'),
     lang('storage_size'),
-    lang('storage_in_use')
+    lang('storage_in_use'),
+    lang('storage_storage')
 );
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -65,7 +66,8 @@ foreach ($devices as $device => $details) {
         continue;
 
     // TODO: discuss icon strategy
-    $in_use_icon = ($details['in_use']) ? '<span class="theme-icon-ok"> </span>' : '';
+    $in_use_icon = ($details['in_use']) ? '<span class="theme-icon-ok">&nbsp;</span>' : '';
+    $is_store = ($details['is_store']) ? '<span class="theme-icon-ok">&nbsp;</span>' : '';
 
     $item['title'] = $device;
     $item['action'] = '';
@@ -76,13 +78,20 @@ foreach ($devices as $device => $details) {
         $device,
         $details['identifier'],
         $details['size'] . ' ' . $details['size_units'],
-        $in_use_icon
+        $in_use_icon,
+        $is_store,
     );
 
     $items[] = $item;
 }
 
 sort($items);
+
+// FIXME: Wizard
+// in_use + is_store -> Storage is good to go!
+// !in_use + !is_store -> Jump to create store view?
+// in_use + !is_store -> No storage devices found, use directory on root partition?
+// !in_use + is_store -> Storage not mounted ! 
 
 ///////////////////////////////////////////////////////////////////////////////
 // Summary table

@@ -100,7 +100,7 @@ class Devices extends ClearOS_Controller
 
         if ($this->input->post('submit')) {
             try {
-                $this->storage_device->create_data_drive($device_decoded, $this->input->post('type'));
+                $this->storage_device->run_create_data_drive($device_decoded, $this->input->post('type'));
 
                 $this->page->set_status_added();
             } catch (Exception $e) {
@@ -109,26 +109,46 @@ class Devices extends ClearOS_Controller
             }
         }
 
-        // Load view data
-        //---------------
-
-        try {
-            $data['device'] = $device_decoded;
-            $data['details'] = $this->storage_device->get_device_details($data['device']);
-            $data['types'] = $this->storage_device->get_file_system_types();
-
-            // Set default
-            $data['type'] = 'ext4';
-        } catch (Exception $e) {
-            $this->page->view_exception($e);
-            return;
-        }
-
         // Load the views
         //---------------
 
-        $this->page->view_form('devices/create', $data, lang('base_create'));
+        $this->page->view_form('create', $data, lang('base_create'));
     }
+
+    /**
+     * Returns create data store state.
+     *
+     * @return JSON crate data store state
+     */
+
+    function get_data_drive_state()
+    {
+        // Load dependencies
+        //------------------
+
+        $this->load->library('storage/Storage_Device');
+
+        // Get state
+        //----------
+
+        try {
+            $data['state'] = $this->storage_device->get_data_drive_state();
+            $data['error_code'] = 0;
+        } catch (Exception $e) {
+            $data['error_code'] = clearos_exception_code($e);
+            $data['error_message'] = clearos_exception_message($e);
+        }
+
+        // Return state
+        //-------------
+
+        header('Cache-Control: no-cache, must-revalidate');
+        header('Expires: Fri, 01 Jan 2010 05:00:00 GMT');
+        header('Content-type: application/json');
+
+        $this->output->set_output(json_encode($data));
+    }
+
 
     /**
      * Storage detail view.
@@ -145,6 +165,7 @@ class Devices extends ClearOS_Controller
 
         $this->lang->load('storage');
         $this->load->library('storage/Storage_Device');
+        $this->load->library('storage/Storage');
 
         // Load view data
         //---------------
@@ -152,6 +173,11 @@ class Devices extends ClearOS_Controller
         try {
             $data['device'] = base64_decode(strtr($device, '-_.', '+/='));
             $data['details'] = $this->storage_device->get_device_details($data['device']);
+            $data['types'] = $this->storage_device->get_file_system_types();
+            $data['storage_base'] = $this->storage->get_base();
+
+            // Set default
+            $data['type'] = 'ext4';
         } catch (Exception $e) {
             $this->page->view_exception($e);
             return;

@@ -1,0 +1,116 @@
+#!/usr/clearos/sandbox/usr/bin/php
+<?php
+
+/**
+ * Storage initialization script.
+ *
+ * @category   ClearOS
+ * @package    Storage
+ * @subpackage Scripts
+ * @author     ClearFoundation <developer@clearfoundation.com>
+ * @copyright  2013 ClearFoundation
+ * @license    http://www.gnu.org/copyleft/lgpl.html GNU Lesser General Public License version 3 or later
+ * @link       http://www.clearfoundation.com/docs/developer/apps/storage/
+ */
+
+///////////////////////////////////////////////////////////////////////////////
+// B O O T S T R A P
+///////////////////////////////////////////////////////////////////////////////
+
+$bootstrap = getenv('CLEAROS_BOOTSTRAP') ? getenv('CLEAROS_BOOTSTRAP') : '/usr/clearos/framework/shared';
+require_once $bootstrap . '/bootstrap.php';
+
+///////////////////////////////////////////////////////////////////////////////
+// D E P E N D E N C I E S
+///////////////////////////////////////////////////////////////////////////////
+
+// Classes
+//--------
+
+use \clearos\apps\storage\Storage_Device as Storage_Device;
+
+clearos_load_library('storage/Storage_Device');
+
+// Exceptions
+//-----------
+
+use \Exception as Exception;
+
+///////////////////////////////////////////////////////////////////////////////
+// F U N C T I O N S
+///////////////////////////////////////////////////////////////////////////////
+
+function ttyecho($on)
+{
+    global $ttyecho;
+
+    if ($on) {
+        if (isset($ttyecho))
+            exec('stty ' .$ttyecho);
+    } else {
+        $ttyecho = exec('stty -g');
+        exec('stty -echo');
+    }
+}
+
+///////////////////////////////////////////////////////////////////////////////
+// O P T I O N S
+///////////////////////////////////////////////////////////////////////////////
+
+$short_options = '';
+$short_options .= 'd:'; // Device
+$short_options .= 't:'; // File system type
+$short_options .= 'f';  // Force
+$short_options .= 'h';  // Help
+
+$help_options  = '';
+$help_options .= "  -d: Device (e.g. /dev/sdb)\n";
+$help_options .= "  -t: File system type (e.g. ext4)\n";
+$help_options .= "  -f: Force\n";
+$help_options .= "\n";
+$help_options .= "  -h: Help\n";
+
+$options = getopt($short_options);
+
+$device = isset($options['d']) ? $options['d'] : '';
+$type = isset($options['t']) ? $options['t'] : '';
+$force = isset($options['f']) ? TRUE : FALSE;
+$help = isset($options['h']) ? TRUE : FALSE;
+
+///////////////////////////////////////////////////////////////////////////////
+// M A I N
+///////////////////////////////////////////////////////////////////////////////
+
+$storage_device = new Storage_Device();
+
+// Basic usage stuff
+//------------------
+
+if ($help) {
+    echo "usage: " . $argv[0] . " [options]\n";
+    echo $help_options;
+    exit(0);
+}
+
+// Handle command line options
+//----------------------------
+
+while ($storage_device->validate_device($device)) {
+    echo 'Device (e.g. /dev/sdb): ';
+    $device = trim(fgets(STDIN));
+}
+
+while ($storage_device->validate_file_system_type($type)) {
+    echo 'File system type (e.g. ext4): ';
+    $type = trim(fgets(STDIN));
+}
+
+// Run it
+//-------
+
+echo "The following settings will be used to set up data store\n\n";
+echo "Device:            $device\n";
+echo "File system type:  $type\n";
+echo "\n";
+
+$storage_device->create_data_drive($device, $type);

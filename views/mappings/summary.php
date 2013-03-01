@@ -60,7 +60,7 @@ foreach ($mapping_details as $details) {
     foreach ($details['mappings'] as $source => $store) {
         $source_encoded = strtr(base64_encode($source),  '+/=', '-_.');
         // FIXME: discuss icon strategy
-        $state_icon = ($store['state_level'] == 'good') ?  '<span class="theme-icon-ok"> </span>' : '<span class="theme-icon-fail"> </span>';
+        $state_icon = ($store['state_level'] == 'good') ?  '<span class="theme-icon-ok">&nbsp;</span>' : '<span class="theme-icon-fail">&nbsp;</span>';
 
         $item['title'] = $source;
         $item['action'] = '';

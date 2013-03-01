@@ -5,7 +5,7 @@
 /////////////////////////////////////////////////////////////////////////////
 
 $app['basename'] = 'storage';
-$app['version'] = '1.4.15';
+$app['version'] = '1.4.19';
 $app['release'] = '1';
 $app['vendor'] = 'ClearFoundation';
 $app['packager'] = 'ClearFoundation';
@@ -34,7 +34,8 @@ $app['controllers']['storage']['wizard_name'] = lang('storage_app_name');
 $app['controllers']['storage']['wizard_description'] = lang('storage_wizard_help');
 $app['controllers']['storage']['inline_help'] = array(
     lang('storage_big_picture') => lang('storage_inline_help_overview'),
-    lang('base_user_guide') => lang('storage_user_guide_preamble'),
+    lang('base_user_guide') => lang('storage_user_guide_preamble') . 
+        "<p><a target='_blank' href='http://www.clearcenter.com/redirect/ClearOS/6.2.0/userguide/storage'>" . lang('storage_storage_manager_guide') . "</a></p>",
 );
 
 /////////////////////////////////////////////////////////////////////////////
@@ -54,11 +55,20 @@ $app['core_directory_manifest'] = array(
     '/var/clearos/storage' => array(),
     '/var/clearos/storage/plugins' => array(),
     '/var/clearos/storage/state' => array(),
+    '/var/clearos/storage/lock' => array(
+        'mode' => '0775',
+        'owner' => 'root',
+        'group' => 'webconfig',
+    ),
 );
 
 // TODO: make storage.conf noreplace?
 
 $app['core_file_manifest'] = array( 
+    'app-storage-create' => array ( 
+        'target' => '/usr/sbin/app-storage-create',
+        'mode' => '0755',
+    ),
     'storage.conf' => array ( 
         'target' => '/etc/clearos/storage.conf',
         'config' => TRUE,

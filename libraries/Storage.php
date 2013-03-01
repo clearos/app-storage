@@ -267,6 +267,21 @@ class Storage extends Engine
     }
 
     /**
+     * Returns storage base.
+     *
+     * @return string storage base
+     */
+
+    public function get_base()
+    {
+        clearos_profile(__METHOD__, __LINE__);
+
+        $config = $this->_get_config();
+
+        return $config['base'];
+    }
+
+    /**
      * Returns storage mappings.
      *
      * @return array storage mappings
@@ -295,6 +310,21 @@ class Storage extends Engine
         }
 
         return $mappings;
+    }
+
+    /**
+     * Returns storage mount points.
+     *
+     * @return array storage mount points
+     */
+
+    public function get_mount_points()
+    {
+        clearos_profile(__METHOD__, __LINE__);
+
+        $config = $this->_get_config();
+
+        return array($config['base']);
     }
 
     /**

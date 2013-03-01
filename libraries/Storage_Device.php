@@ -60,10 +60,12 @@ clearos_load_language('stroarge');
 use \clearos\apps\base\Engine as Engine;
 use \clearos\apps\base\File as File;
 use \clearos\apps\base\Shell as Shell;
+use \clearos\apps\storage\Storage as Storage;
 
 clearos_load_library('base/Engine');
 clearos_load_library('base/File');
 clearos_load_library('base/Shell');
+clearos_load_library('storage/Storage');
 
 // Exceptions
 //-----------
@@ -101,14 +103,23 @@ class Storage_Device extends Engine
 
     const FILE_MDSTAT = '/proc/mdstat';
     const FILE_MTAB = '/etc/mtab';
+    const FILE_CREATE_LOG = 'storage_create.log';
+    const FILE_INITIALIZING = '/var/clearos/storage/lock/initializing';
     const PATH_IDE = '/proc/ide';
     const PATH_IDE_DEVICES = '/sys/bus/ide/devices';
     const PATH_USB_DEVICES = '/sys/bus/usb/devices';
     const PATH_SCSI_DEVICES = '/sys/bus/scsi/devices';
+
     const COMMAND_PARTED = '/sbin/parted';
     const COMMAND_SFDISK = '/sbin/sfdisk';
     const COMMAND_SWAPON = '/sbin/swapon -s %s';
-    const COMMAND_MKFS = '/sbin/mkfs';
+    const COMMAND_MKFS_EXT3 = '/sbin/mkfs.ext3';
+    const COMMAND_MKFS_EXT4 = '/sbin/mkfs.ext4';
+    const COMMAND_STORAGE_CREATE = '/usr/sbin/app-storage-create';
+
+    const STATUS_INITIALIZED = 'initialized';
+    const STATUS_INITIALIZING = 'initializing';
+    const STATUS_UNINITIALIZED = 'uninitialized';
 
     ///////////////////////////////////////////////////////////////////////////////
     // V A R I A B L E S
@@ -160,6 +171,91 @@ class Storage_Device extends Engine
 
         Validation_Exception::is_valid($this->validate_device($device));
         Validation_Exception::is_valid($this->validate_file_system_type($type));
+
+        // Lock state file
+        //----------------
+
+        $lock_file = new File(self::FILE_INITIALIZING);
+        $initializing_lock = fopen(self::FILE_INITIALIZING, 'w');
+
+        if (!flock($initializing_lock, LOCK_EX | LOCK_NB)) {
+            clearos_log('storage', 'storage creation is already running');
+            return;
+        }
+
+        try {
+            // Initialize create log
+            //----------------------
+
+            $file = new File(CLEAROS_TEMP_DIR . '/' . self::FILE_CREATE_LOG);
+
+            if ($file->exists())
+                $file->delete();
+
+            // Run mkfs
+            //---------
+
+            clearos_log('storage', 'creating data store: ' . $device);
+
+            $shell = new Shell();
+
+            $options['validate_exit_code'] = FALSE;
+            $options['log'] = self::FILE_CREATE_LOG;
+
+sleep(15);
+            if ($type === 'ext4') 
+                $retval = $shell->execute(self::COMMAND_MKFS_EXT4, '-F ' . $device, TRUE, $options);
+            else if ($type === 'ext3') 
+                $retval = $shell->execute(self::COMMAND_MKFS_EXT3, '-F ' . $device, TRUE, $options);
+
+        } catch (Exception $e) {
+            $lock_file->delete();
+             throw new Engine_Exception(clearos_exception_message($e));
+        }
+
+        // Cleanup file / file lock
+        //-------------------------
+
+        flock($initializing_lock, LOCK_UN);
+        fclose($initializing_lock);
+
+        if ($lock_file->exists())
+            $lock_file->delete();
+    }
+
+    /**
+     * Returns data drive state.
+     *
+     * @return string data drive state
+     * @throws Engine_Exception
+     */
+
+    public function get_data_drive_state()
+    {
+        clearos_profile(__METHOD__, __LINE__);
+
+        // Check initializing
+        //-------------------
+
+        $file = new File(self::FILE_INITIALIZING);
+
+        if ($file->exists()) {
+            $initializing_lock = fopen(self::FILE_INITIALIZING, 'r');
+
+            if (!flock($initializing_lock, LOCK_SH | LOCK_NB))
+                return self::STATUS_INITIALIZING;
+        }
+
+        // Check initialized
+        //------------------
+
+        $devices = $this->get_devices();
+        foreach ($devices as $device => $details) {
+            if ($details['is_store'])
+                return self::STATUS_INITIALIZED;
+        }
+
+        return self::STATUS_UNINITIALIZED;
     }
 
     /**
@@ -475,6 +571,29 @@ class Storage_Device extends Engine
         return FALSE;
     }
 
+    /**
+     * Runs create data drive.
+     *
+     * @param string $device device
+     * @param string $type   file system type
+     *
+     * @return array storage devices
+     * @throws Engine_Exception
+     */
+
+    public function run_create_data_drive($device, $type)
+    {
+        clearos_profile(__METHOD__, __LINE__);
+
+        Validation_Exception::is_valid($this->validate_device($device));
+        Validation_Exception::is_valid($this->validate_file_system_type($type));
+
+        $options['background'] = TRUE;
+
+        $shell = new Shell();
+        $shell->execute(self::COMMAND_STORAGE_CREATE, '-d ' . $device . ' -t ' . $type, TRUE, $options);
+    }
+
     ///////////////////////////////////////////////////////////////////////////////
     // V A L I D A T I O N   R O U T I N E S
     ///////////////////////////////////////////////////////////////////////////////
@@ -620,21 +739,26 @@ class Storage_Device extends Engine
 
         // Add partition information
         // Add "in_use" flag (i.e. check if any partition is in use)
-        //----------------------------------------------------------
+        // Add "is_store" flag (i.e. check if any partition is /store)
+        //------------------------------------------------------------
+
+        $storage = new Storage();
+        $store_points = $storage->get_mount_points();
 
         foreach ($this->devices as $device => $details) {
             $this->devices[$device]['partitioning'] = $this->get_partition_info($device);
             $this->devices[$device]['in_use'] = FALSE;
+            $this->devices[$device]['is_store'] = FALSE;
 
             if (!empty($this->devices[$device]['partitioning']['partitions'])) {
                 foreach ($this->devices[$device]['partitioning']['partitions'] as $id => $details) {
-                    if ($details['is_mounted']) {
+                    if (($details['is_mounted']) || ($details['is_lvm']))
                         $this->devices[$device]['in_use'] = TRUE;
-                        break;
-                    }
+                    
+                    if (in_array($details['mount_point'], $store_points))
+                        $this->devices[$device]['is_store'] = TRUE;
                 }
             }
-    
         }
 
         // Purge unwanted devices

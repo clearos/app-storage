@@ -57,15 +57,21 @@ echo form_close();
 ///////////////////////////////////////////////////////////////////////////////
 
 if (!$details['in_use']) {
-    $device_encoded = strtr(base64_encode($device),  '+/=', '-_.');
+    echo form_open('storage/devices/create_data_drive/' . $device_encoded);
+    echo form_header(lang('base_create'));
 
-    echo infobox_highlight(
-        lang('base_information'), 
-        lang('storage_no_partitions_found_create_data_drive') . '<br>' . 
-        '<p align="center">' .
-        anchor_custom('/app/storage/devices/create_data_drive/' . $device_encoded, lang('storage_create_data_drive')) . ' ' . 
-        anchor_custom('/app/storage', lang('base_return_to_summary')) . '</p>'
+    echo field_view(lang('storage_mount_point'), $storage_base);
+    echo field_dropdown('type', $types, $type, lang('storage_file_system'));
+
+    echo field_button_set(
+        array(
+            form_submit_custom('submit', lang('base_create')),
+            anchor_cancel('/app/storage/devices')
+        )
     );
+
+    echo form_footer();
+    echo form_close();
     return;
 }
 
@@ -81,12 +87,12 @@ $headers = array(
     lang('storage_mount')
 );
 
-$anchors = array(anchor_custom('/app/storage', lang('base_return_to_summary')));
+$anchors = array(anchor_custom('/app/storage/devices', lang('base_return_to_summary')));
 
 foreach ($details['partitioning']['partitions'] as $id => $partition_info) {
 
     // TODO: discuss icon strategy
-    $bootable_icon = ($partition_info['is_bootable']) ? '<span class="theme-icon-ok"> </span>' : '';
+    $bootable_icon = ($partition_info['is_bootable']) ? '<span class="theme-icon-ok">&nbsp;</span>' : '';
 
     if (empty($partition_info['mount_point']))
         $mount = ($partition_info['is_lvm']) ? lang('storage_lvm') : '';
