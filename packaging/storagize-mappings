@@ -1,0 +1,16 @@
+#!/bin/sh
+
+# Move system database
+/sbin/service system-mysqld stop
+mkdir -p /var/tmp/system-mysql
+mv /var/lib/system-mysql/* /var/tmp/system-mysql/
+
+# Trigger storage engine mappings
+/usr/sbin/storage
+
+# Start the ssytem database
+mv /var/tmp/system-mysql/* /var/lib/system-mysql
+/sbin/service system-mysqld start
+
+# Re-initialize reports database
+/usr/clearos/apps/reports_database/deploy/initialize-database

@@ -103,19 +103,23 @@ class Storage_Device extends Engine
 
     const FILE_MDSTAT = '/proc/mdstat';
     const FILE_MTAB = '/etc/mtab';
+    const FILE_FSTAB = '/etc/fstab';
     const FILE_CREATE_LOG = 'storage_create.log';
     const FILE_INITIALIZING = '/var/clearos/storage/lock/initializing';
     const PATH_IDE = '/proc/ide';
     const PATH_IDE_DEVICES = '/sys/bus/ide/devices';
     const PATH_USB_DEVICES = '/sys/bus/usb/devices';
     const PATH_SCSI_DEVICES = '/sys/bus/scsi/devices';
+    const PATH_XEN_DEVICES = '/sys/bus/xen/drivers/vbd';
 
+    const COMMAND_MOUNT = '/bin/mount';
     const COMMAND_PARTED = '/sbin/parted';
     const COMMAND_SFDISK = '/sbin/sfdisk';
     const COMMAND_SWAPON = '/sbin/swapon -s %s';
     const COMMAND_MKFS_EXT3 = '/sbin/mkfs.ext3';
     const COMMAND_MKFS_EXT4 = '/sbin/mkfs.ext4';
     const COMMAND_STORAGE_CREATE = '/usr/sbin/app-storage-create';
+    const COMMAND_STORAGIZE_MAPPINGS = '/usr/sbin/storagize-mappings';
 
     const STATUS_INITIALIZED = 'initialized';
     const STATUS_INITIALIZING = 'initializing';
@@ -202,12 +206,35 @@ class Storage_Device extends Engine
             $options['validate_exit_code'] = FALSE;
             $options['log'] = self::FILE_CREATE_LOG;
 
-sleep(15);
             if ($type === 'ext4') 
                 $retval = $shell->execute(self::COMMAND_MKFS_EXT4, '-F ' . $device, TRUE, $options);
             else if ($type === 'ext3') 
                 $retval = $shell->execute(self::COMMAND_MKFS_EXT3, '-F ' . $device, TRUE, $options);
 
+            // Add fstab entry
+            //----------------
+
+            $storage = new Storage();
+            $storage_base = $storage->get_base();
+
+            $file = new File(self::FILE_FSTAB);
+
+            $entry = sprintf("%-23s %-23s %-7s %-15s %s %s\n", $device, $storage_base, $type, 'defaults', '1', '2');
+            $file->add_lines($entry);
+
+            // Do mount
+            //---------
+
+            $shell = new Shell();
+            $shell->execute(self::COMMAND_MOUNT, $device . ' ' . $storage_base, TRUE);
+
+            $storage->do_mount();
+
+            // TODO: remap the system database storage.  This should be
+            // re-implemented using hooks (i.e. all storage plugins should
+            // have a script that migrates old storage lccation to the new one.
+            $shell = new Shell();
+            $shell->execute(self::COMMAND_STORAGIZE_MAPPINGS, '', TRUE);
         } catch (Exception $e) {
             $lock_file->delete();
              throw new Engine_Exception(clearos_exception_message($e));
@@ -679,10 +706,15 @@ sleep(15);
             }
         }
 
-        // SCSI Scan
-        //----------
+        // SCSI and Xen Scan
+        //------------------
 
-        $scan = $this->_scan_scsi();
+        // TODO: not sure if Xen and SCSI should really be combined here.
+
+        $scsi_scan = $this->_scan_scsi();
+        $xen_scan = $this->_scan_xen();
+
+        $scan = array_merge($scsi_scan, $xen_scan);
 
         $scsi = array();
 
@@ -738,12 +770,12 @@ sleep(15);
         }
 
         // Add partition information
-        // Add "in_use" flag (i.e. check if any partition is in use)
+        // Add " . "in_use" flag (i.e. check if any partition is in use)
         // Add "is_store" flag (i.e. check if any partition is /store)
         //------------------------------------------------------------
 
         $storage = new Storage();
-        $store_points = $storage->get_mount_points();
+        $mount_points = $storage->get_mount_points();
 
         foreach ($this->devices as $device => $details) {
             $this->devices[$device]['partitioning'] = $this->get_partition_info($device);
@@ -755,7 +787,7 @@ sleep(15);
                     if (($details['is_mounted']) || ($details['is_lvm']))
                         $this->devices[$device]['in_use'] = TRUE;
                     
-                    if (in_array($details['mount_point'], $store_points))
+                    if (in_array($details['mount_point'], $mount_points))
                         $this->devices[$device]['is_store'] = TRUE;
                 }
             }
@@ -1051,6 +1083,96 @@ sleep(15);
 
                     unset($devices[$key]['path']);
                     unset($devices[$key]['nodes']);
+                }
+            }
+        } catch (Exception $e) {
+            clearos_log('storage', $e->GetMessage());
+        }
+
+        return $devices;
+    }
+
+    /**
+     * Scans Xen devices.
+     *
+     * @access private
+     * @return array ATAPI devices
+     */
+
+    private function _scan_xen()
+    {
+        clearos_profile(__METHOD__, __LINE__);
+
+        $devices = array();
+
+        try {
+            // Find Xen devices that match:vbd-x 
+            $entries = $this->_scan_directory(self::PATH_XEN_DEVICES, '/^vbd-.*/');
+
+            // Scan all Xen devices.
+            if (! empty($entries)) {
+                foreach ($entries as $entry) {
+                    $block = 'block';
+                    $path = self::PATH_XEN_DEVICES . "/$entry";
+                    $devname = $this->_scan_directory("$path/block", '/^[a-z0-9]*$/');
+                    $device['device'] = '/dev/' . $devname[0];
+
+                    if (count($devname) != 1)
+                        continue;
+
+                    $dev = $this->_scan_directory("$path/block/" . $devname[0], '/^dev$/');
+
+                    if (count($dev) != 1)
+                        continue;
+
+                    // Validate Xen storage device
+                    if (file_exists("$path/vendor") && ($fh = fopen("$path/vendor", 'r'))) {
+                        $device['vendor'] = chop(fgets($fh, 4096));
+                        fclose($fh);
+                    } else {
+                        // TODO: a bit of a kludge to present Amazon volumes
+                        $device['vendor'] = file_exists('/usr/clearos/apps/amazon_ec2') ? 'Amazon' : 'Xen';
+                    }
+
+                    if (file_exists("$path/model") && ($fh = fopen("$path/model", 'r'))) {
+                        $device['model'] = chop(fgets($fh, 4096));
+                        fclose($fh);
+                    } else {
+                        $device['model'] = 'Drive';
+                    }
+
+                    if (!($fh = fopen("$path/$block/" . $devname[0] . "/dev", 'r')))
+                        continue;
+    
+                    $device['nodes'] = chop(fgets($fh, 4096));
+                    fclose($fh);
+
+                    if (!($fh = fopen("$path/$block/" . $devname[0] . "/size", 'r')))
+                        continue;
+    
+                    $device['size_in_blocks'] = chop(fgets($fh, 4096));
+                    fclose($fh);
+
+                    if (!($fh = fopen("$path/$block/" . $devname[0] . "/removable", 'r')))
+                        continue;
+    
+                    $device['removable'] = (chop(fgets($fh, 4096))) ? TRUE : FALSE;
+                    fclose($fh);
+
+                    $device['path'] = "$path/$block";
+                    $device['bus'] = 'scsi';
+
+                    // Valid device found (almost, continues below)...
+                    $unique = TRUE;
+                    foreach ($devices as $usb) {
+                        if ($usb['nodes'] != $device['nodes'])
+                            continue;
+                        $unique = FALSE;
+                        break;
+                    }
+
+                    if ($unique)
+                        $devices[] = $device;
                 }
             }
         } catch (Exception $e) {

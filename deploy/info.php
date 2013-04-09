@@ -5,7 +5,7 @@
 /////////////////////////////////////////////////////////////////////////////
 
 $app['basename'] = 'storage';
-$app['version'] = '1.4.30';
+$app['version'] = '1.4.34';
 $app['release'] = '1';
 $app['vendor'] = 'ClearFoundation';
 $app['packager'] = 'ClearFoundation';
@@ -43,7 +43,7 @@ $app['controllers']['storage']['inline_help'] = array(
 /////////////////////////////////////////////////////////////////////////////
 
 $app['core_requires'] = array(
-    'app-base >= 1:1.4.7',
+    'app-base >= 1:1.4.31',
     'initscripts',
     'parted',
     'util-linux-ng',
@@ -80,6 +80,10 @@ $app['core_file_manifest'] = array(
     ),
     'storage' => array ( 
         'target' => '/usr/sbin/storage',
+        'mode' => '0755',
+    ),
+    'storagize-mappings' => array ( 
+        'target' => '/usr/sbin/storagize-mappings',
         'mode' => '0755',
     ),
 );

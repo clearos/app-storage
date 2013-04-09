@@ -5,4 +5,4 @@
 /usr/sbin/addsudo /sbin/parted app-storage-core
 /usr/sbin/addsudo /sbin/sfdisk app-storage-core
 /usr/sbin/addsudo /usr/sbin/app-storage-create app-storage-core
-
+/usr/sbin/addsudo /usr/sbin/storagize-mappings app-storage-core

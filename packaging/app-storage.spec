@@ -1,7 +1,7 @@
 
 Name: app-storage
 Epoch: 1
-Version: 1.4.30
+Version: 1.4.34
 Release: 1%{dist}
 Summary: Storage Manager
 License: GPLv3
@@ -19,7 +19,7 @@ Summary: Storage Manager - Core
 License: LGPLv3
 Group: ClearOS/Libraries
 Requires: app-base-core
-Requires: app-base >= 1:1.4.7
+Requires: app-base >= 1:1.4.31
 Requires: initscripts
 Requires: parted
 Requires: util-linux-ng
@@ -47,6 +47,7 @@ install -D -m 0755 packaging/app-storage-create %{buildroot}/usr/sbin/app-storag
 install -D -m 0755 packaging/storage %{buildroot}/usr/sbin/storage
 install -D -m 0644 packaging/storage.conf %{buildroot}/etc/clearos/storage.conf
 install -D -m 0755 packaging/storage.init %{buildroot}/etc/rc.d/init.d/storage
+install -D -m 0755 packaging/storagize-mappings %{buildroot}/usr/sbin/storagize-mappings
 
 %post
 logger -p local6.notice -t installer 'app-storage - installing'
@@ -99,3 +100,4 @@ exit 0
 /usr/sbin/storage
 %config(noreplace) /etc/clearos/storage.conf
 /etc/rc.d/init.d/storage
+/usr/sbin/storagize-mappings

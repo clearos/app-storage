@@ -34,3 +34,4 @@ $lang['storage_create_data_drive'] = 'Create Data Drive';
 $lang['storage_in_use'] = 'In Use';
 $lang['storage_storage'] = 'Storage';
 $lang['storage_storage_manager_guide'] = 'Storage Manager Guide';
+$lang['storage_initializing_storage_warning'] = 'Initializing storage... this may take a few minutes.';

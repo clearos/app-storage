@@ -41,6 +41,7 @@ require_once $bootstrap . '/bootstrap.php';
 ///////////////////////////////////////////////////////////////////////////////
 
 clearos_load_language('base');
+clearos_load_language('storage');
 
 ///////////////////////////////////////////////////////////////////////////////
 // J A V A S C R I P T
@@ -54,8 +55,7 @@ $(document).ready(function() {
     // Translations
     //-------------
 
-    lang_initializing = '<?php echo lang("base_initializing"); ?>';
-    lang_success = '<?php echo lang("openldap_directory_directory_updated"); ?>';
+    lang_initializing = '<?php echo lang("storage_initializing_storage_warning"); ?>';
 
     // Wizard next button handling
     //----------------------------
@@ -109,7 +109,7 @@ function showStorageStatus(payload) {
     if (payload.state == 'initializing')
         $("#storage_status").html('<div class="theme-loading-normal">' + lang_initializing + '</div>');
     else
-        window.location = '/app/storage/devices/index';
+        window.location = '/app/storage/devices';
 }
 
 // vim: ts=4 syntax=javascript
