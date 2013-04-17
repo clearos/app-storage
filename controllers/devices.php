@@ -66,6 +66,7 @@ class Devices extends ClearOS_Controller
 
         try {
             $data['devices'] = $this->storage_device->get_devices();
+            $found = $this->storage_device->find_obvious_storage_device();
         } catch (Exception $e) {
             $this->page->view_exception($e);
             return;
@@ -74,7 +75,17 @@ class Devices extends ClearOS_Controller
         // Load the views
         //---------------
 
-        $this->page->view_form('devices/summary', $data, lang('storage_devices'));
+        // If wizard and there's disk ready for storage (e.g. Amazon EBS), then 
+        // jump right to the create page.
+
+        $no_redirect = $this->session->userdata('storage_noredirect') ? TRUE : FALSE;
+
+        if ($this->session->userdata('wizard') && !$no_redirect && !empty($found)) {
+            $this->session->set_userdata('storage_noredirect', TRUE);
+            redirect('/storage/devices/view/' . strtr(base64_encode($found),  '+/=', '-_.'));
+        } else {
+            $this->page->view_form('devices/summary', $data, lang('storage_devices'));
+        }
     }
 
     /**

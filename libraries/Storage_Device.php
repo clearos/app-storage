@@ -251,6 +251,38 @@ class Storage_Device extends Engine
     }
 
     /**
+     * Returns obvious storage device.
+     *
+     * In some circumstances (e.g. ClearBOX, Cloud instances), there is a
+     * single unformatted disk ready for use.  This method can be used to 
+     * handle this scenario.
+     *
+     * @return string data drive state
+     * @throws Engine_Exception
+     */
+
+    public function find_obvious_storage_device()
+    {
+        clearos_profile(__METHOD__, __LINE__);
+
+        $devices = $this->get_devices();
+
+        $count = 0;
+
+        foreach ($devices as $device => $details) {
+            if (!$details['in_use'] && !$details['is_store'] && !$details['removable']) {
+                $count++;
+                $obvious = $device;
+            }
+        }
+
+        if ($count === 1)
+            return $obvious;
+        else
+            return '';
+    }
+
+    /**
      * Returns data drive state.
      *
      * @return string data drive state
