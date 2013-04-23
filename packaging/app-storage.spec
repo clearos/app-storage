@@ -1,7 +1,7 @@
 
 Name: app-storage
 Epoch: 1
-Version: 1.4.35
+Version: 1.4.36
 Release: 1%{dist}
 Summary: Storage Manager
 License: GPLv3
@@ -20,6 +20,8 @@ License: LGPLv3
 Group: ClearOS/Libraries
 Requires: app-base-core
 Requires: app-base >= 1:1.4.31
+Requires: app-events-core
+Requires: csplugin-filewatch
 Requires: initscripts
 Requires: parted
 Requires: util-linux-ng
@@ -39,15 +41,17 @@ cp -r * %{buildroot}/usr/clearos/apps/storage/
 
 install -d -m 0755 %{buildroot}/etc/clearos/storage.d
 install -d -m 0755 %{buildroot}/store
+install -d -m 0755 %{buildroot}/var/clearos/events/storage
 install -d -m 0755 %{buildroot}/var/clearos/storage
 install -d -m 0775 %{buildroot}/var/clearos/storage/lock
 install -d -m 0755 %{buildroot}/var/clearos/storage/plugins
 install -d -m 0755 %{buildroot}/var/clearos/storage/state
 install -D -m 0755 packaging/app-storage-create %{buildroot}/usr/sbin/app-storage-create
+install -D -m 0644 packaging/filewatch-storage-event.conf %{buildroot}/etc/clearsync.d/filewatch-storage-event.conf
 install -D -m 0755 packaging/storage %{buildroot}/usr/sbin/storage
 install -D -m 0644 packaging/storage.conf %{buildroot}/etc/clearos/storage.conf
 install -D -m 0755 packaging/storage.init %{buildroot}/etc/rc.d/init.d/storage
-install -D -m 0755 packaging/storagize-mappings %{buildroot}/usr/sbin/storagize-mappings
+install -D -m 0755 packaging/system-database-event %{buildroot}/var/clearos/events/storage/system-database
 
 %post
 logger -p local6.notice -t installer 'app-storage - installing'
@@ -89,6 +93,7 @@ exit 0
 %dir /usr/clearos/apps/storage
 %dir /etc/clearos/storage.d
 %dir /store
+%dir /var/clearos/events/storage
 %dir /var/clearos/storage
 %dir %attr(0775,root,webconfig) /var/clearos/storage/lock
 %dir /var/clearos/storage/plugins
@@ -97,7 +102,8 @@ exit 0
 /usr/clearos/apps/storage/language
 /usr/clearos/apps/storage/libraries
 /usr/sbin/app-storage-create
+/etc/clearsync.d/filewatch-storage-event.conf
 /usr/sbin/storage
 %config(noreplace) /etc/clearos/storage.conf
 /etc/rc.d/init.d/storage
-/usr/sbin/storagize-mappings
+/var/clearos/events/storage/system-database

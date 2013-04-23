@@ -127,6 +127,26 @@ class Devices extends ClearOS_Controller
     }
 
     /**
+     * Initializes storage engine.
+     *
+     * @return void.
+     */
+
+    function set_initialized()
+    {
+        // Load dependencies
+        //------------------
+
+        $this->load->library('storage/Storage');
+
+        // Set initialized
+        //----------------
+
+        $this->storage->set_initialized();
+        redirect($this->session->userdata['wizard_redirect']);
+    }
+
+    /**
      * Returns create data store state.
      *
      * @return JSON crate data store state

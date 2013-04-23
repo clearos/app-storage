@@ -119,7 +119,6 @@ class Storage_Device extends Engine
     const COMMAND_MKFS_EXT3 = '/sbin/mkfs.ext3';
     const COMMAND_MKFS_EXT4 = '/sbin/mkfs.ext4';
     const COMMAND_STORAGE_CREATE = '/usr/sbin/app-storage-create';
-    const COMMAND_STORAGIZE_MAPPINGS = '/usr/sbin/storagize-mappings';
 
     const STATUS_INITIALIZED = 'initialized';
     const STATUS_INITIALIZING = 'initializing';
@@ -229,12 +228,6 @@ class Storage_Device extends Engine
             $shell->execute(self::COMMAND_MOUNT, $device . ' ' . $storage_base, TRUE);
 
             $storage->do_mount();
-
-            // TODO: remap the system database storage.  This should be
-            // re-implemented using hooks (i.e. all storage plugins should
-            // have a script that migrates old storage lccation to the new one.
-            $shell = new Shell();
-            $shell->execute(self::COMMAND_STORAGIZE_MAPPINGS, '', TRUE);
         } catch (Exception $e) {
             $lock_file->delete();
              throw new Engine_Exception(clearos_exception_message($e));
@@ -802,7 +795,7 @@ class Storage_Device extends Engine
         }
 
         // Add partition information
-        // Add " . "in_use" flag (i.e. check if any partition is in use)
+        // Add "in_use" flag (i.e. check if any partition is in use)
         // Add "is_store" flag (i.e. check if any partition is /store)
         //------------------------------------------------------------
 
@@ -816,7 +809,8 @@ class Storage_Device extends Engine
 
             if (!empty($this->devices[$device]['partitioning']['partitions'])) {
                 foreach ($this->devices[$device]['partitioning']['partitions'] as $id => $details) {
-                    if (($details['is_mounted']) || ($details['is_lvm']))
+                    // TODO: Amazon EC2 is bringing up a swap disk?  Avoid it for now.
+                    if (($details['is_mounted']) || ($details['is_lvm']) || (preg_match('/linux-swap/', $details['file_system'])))
                         $this->devices[$device]['in_use'] = TRUE;
                     
                     if (in_array($details['mount_point'], $mount_points))

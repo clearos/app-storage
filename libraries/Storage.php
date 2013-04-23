@@ -103,6 +103,7 @@ class Storage extends Engine
     const FILE_CONFIG = '/etc/clearos/storage.conf';
     const FILE_FSTAB = '/etc/fstab';
     const FILE_NEW_FSTAB = '/var/clearos/storage/fstab';
+    const FILE_INITIALIZED = '/var/clearos/storage/initialized';
     const PATH_CONFIGLETS = '/etc/clearos/storage.d';
     const PATH_STATE = '/var/clearos/storage/state';
     const COMMAND_MOUNT = '/bin/mount';
@@ -352,6 +353,27 @@ class Storage extends Engine
         }
 
         return $detail;
+    }
+
+    /**
+     * Sets initialized status.
+     *
+     * @return void
+     */
+
+    public function set_initialized()
+    {
+        clearos_profile(__METHOD__, __LINE__);
+
+        $config = $this->_get_config();
+
+        if (!isset($config['enabled']) || !$config['enabled'])
+            return;
+
+        $file = new File(self::FILE_INITIALIZED);
+
+        if (!$file->exists())
+            $file->create('root', 'root', '0644');
     }
 
     ///////////////////////////////////////////////////////////////////////////////

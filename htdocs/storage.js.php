@@ -61,13 +61,15 @@ $(document).ready(function() {
     //----------------------------
 
     $("#wizard_nav_next").click(function(){
-        window.location = '/app/base/wizard/next_step';
+        window.location = '/app/storage/devices/set_initialized';
     });
 
+/*
     if (($(location).attr('href').match('.*\/devices$') == null)) {
         $('#theme_wizard_nav_next').hide();
         $('#theme_wizard_nav_previous').hide();
     }
+*/
 
     // Manage storage action
     //----------------------

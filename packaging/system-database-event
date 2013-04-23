@@ -1,0 +1,34 @@
+#!/bin/sh
+
+# Bail if storage is not enabled
+#-------------------------------
+
+[ ! -e /var/clearos/storage/initialized ] && exit 0
+
+# Re-map the system database
+#---------------------------
+
+# TODO: move this to app-system-database
+
+[ -e /var/clearos/system_database/storage/initialized ] && exit 0
+
+logger -p local6.notice -t events "system-database - re-mapping storage"
+
+# Move system database
+/sbin/service system-mysqld stop
+mkdir -p /var/tmp/system-mysql
+mv /var/lib/system-mysql/* /var/tmp/system-mysql/
+
+# Trigger storage engine mappings
+/usr/sbin/storage
+
+# Start the ssytem database
+mv /var/tmp/system-mysql/* /var/lib/system-mysql
+/sbin/service system-mysqld start
+
+# Re-initialize reports database
+/usr/clearos/apps/reports_database/deploy/initialize-database
+
+# Touch flag
+mkdir -p /var/clearos/system_database/storage
+touch /var/clearos/system_database/storage/initialized

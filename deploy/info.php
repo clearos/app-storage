@@ -5,7 +5,7 @@
 /////////////////////////////////////////////////////////////////////////////
 
 $app['basename'] = 'storage';
-$app['version'] = '1.4.35';
+$app['version'] = '1.4.36';
 $app['release'] = '1';
 $app['vendor'] = 'ClearFoundation';
 $app['packager'] = 'ClearFoundation';
@@ -44,6 +44,8 @@ $app['controllers']['storage']['inline_help'] = array(
 
 $app['core_requires'] = array(
     'app-base >= 1:1.4.31',
+    'app-events-core',
+    'csplugin-filewatch',
     'initscripts',
     'parted',
     'util-linux-ng',
@@ -52,6 +54,7 @@ $app['core_requires'] = array(
 $app['core_directory_manifest'] = array(
     '/store' => array(),
     '/etc/clearos/storage.d' => array(),
+    '/var/clearos/events/storage' => array(),
     '/var/clearos/storage' => array(),
     '/var/clearos/storage/plugins' => array(),
     '/var/clearos/storage/state' => array(),
@@ -65,6 +68,7 @@ $app['core_directory_manifest'] = array(
 // TODO: make storage.conf noreplace?
 
 $app['core_file_manifest'] = array( 
+    'filewatch-storage-event.conf' => array('target' => '/etc/clearsync.d/filewatch-storage-event.conf'),
     'app-storage-create' => array ( 
         'target' => '/usr/sbin/app-storage-create',
         'mode' => '0755',
@@ -82,8 +86,8 @@ $app['core_file_manifest'] = array(
         'target' => '/usr/sbin/storage',
         'mode' => '0755',
     ),
-    'storagize-mappings' => array ( 
-        'target' => '/usr/sbin/storagize-mappings',
-        'mode' => '0755',
+    'system-database-event'=> array(
+        'target' => '/var/clearos/events/storage/system-database',
+        'mode' => '0755'
     ),
 );
