@@ -3,9 +3,9 @@
 /**
  * Storage devices controller.
  *
- * @category   Apps
- * @package    Storage
- * @subpackage Controllers
+ * @category   apps
+ * @package    storage
+ * @subpackage controllers
  * @author     ClearFoundation <developer@clearfoundation.com>
  * @copyright  2013 ClearFoundation
  * @license    http://www.gnu.org/copyleft/gpl.html GNU General Public License version 3 or later
@@ -36,9 +36,9 @@
 /**
  * Storage devices controller.
  *
- * @category   Apps
- * @package    Storage
- * @subpackage Controllers
+ * @category   apps
+ * @package    storage
+ * @subpackage controllers
  * @author     ClearFoundation <developer@clearfoundation.com>
  * @copyright  2013 ClearFoundation
  * @license    http://www.gnu.org/copyleft/gpl.html GNU General Public License version 3 or later
