@@ -458,7 +458,7 @@ class Storage extends Engine
     {
         clearos_profile(__METHOD__, __LINE__);
 
-        $file = new FILE(self::FILE_FSTAB);
+        $file = new File(self::FILE_FSTAB);
 
         $lines = $file->get_contents_as_array();
 
