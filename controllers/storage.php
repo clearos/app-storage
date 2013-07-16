@@ -7,7 +7,7 @@
  * @package    storage
  * @subpackage controllers
  * @author     ClearFoundation <developer@clearfoundation.com>
- * @copyright  2012 ClearFoundation
+ * @copyright  2012-2013 ClearFoundation
  * @license    http://www.gnu.org/copyleft/gpl.html GNU General Public License version 3 or later
  * @link       http://www.clearfoundation.com/docs/developer/apps/storage/
  */
@@ -40,7 +40,7 @@
  * @package    storage
  * @subpackage controllers
  * @author     ClearFoundation <developer@clearfoundation.com>
- * @copyright  2012 ClearFoundation
+ * @copyright  2012-2013 ClearFoundation
  * @license    http://www.gnu.org/copyleft/gpl.html GNU General Public License version 3 or later
  * @link       http://www.clearfoundation.com/docs/developer/apps/storage/
  */
@@ -60,11 +60,13 @@ class Storage extends ClearOS_Controller
 
         $this->lang->load('storage');
 
-        // Load views
-        //-----------
+        // Load controllers
+        //-----------------
 
-        $views = array('storage/devices', 'storage/mappings');
+        $options['type'] = MY_Page::TYPE_WIDE_CONFIGURATION;
 
-        $this->page->view_forms($views, lang('storage_app_name'));
+        $controllers = array('storage/devices', 'storage/mappings');
+
+        $this->page->view_controllers($controllers, lang('storage_app_name'), $options);
     }
 }
