@@ -769,7 +769,6 @@ class Storage_Device extends Engine
 
         // Software RAID
         //--------------
-        // FIXME: not verified in 6
 
         $raid_devices = $this->get_software_raid_devices();
         $purge = array();
@@ -790,8 +789,23 @@ class Storage_Device extends Engine
         foreach ($raid_devices as $device => $details) {
             $this->devices[$device]['vendor'] = 'Software';
             $this->devices[$device]['model'] = 'RAID';
-            $this->devices[$device]['identifier'] = $device['vendor'] . ' ' . $device['model'];
+            $this->devices[$device]['identifier'] = 'Software RAID';
             $this->devices[$device]['type'] = $details['type'];
+
+            $sys_device = preg_replace('/^\/dev\//', '', $device);
+            if ($fh = fopen("/sys/block/$sys_device/size", 'r')) {
+                $size_in_blocks = chop(fgets($fh, 4096));
+                if ($size_in_blocks > 1000000) {
+                    $this->devices[$device]['size'] = round(($size_in_blocks * 512) / (1000000000));
+                    $this->devices[$device]['size_units'] = lang('base_gigabytes');
+                } else {
+                    $this->devices[$device['device']]['size'] = round(($size_in_blocks * 512) / 1000000);
+                    $this->devices[$device['device']]['size_units'] = lang('base_megabytes');
+                }
+            } else {
+                $this->devices[$device['device']]['size'] = '';
+                $this->devices[$device['device']]['size_units'] = lang('base_gigabytes');
+            }
         }
 
         // Add partition information
