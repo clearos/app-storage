@@ -1,7 +1,7 @@
 
 Name: app-storage
 Epoch: 1
-Version: 1.4.36
+Version: 1.4.38
 Release: 1%{dist}
 Summary: Storage Manager
 License: GPLv3
