@@ -799,12 +799,12 @@ class Storage_Device extends Engine
                     $this->devices[$device]['size'] = round(($size_in_blocks * 512) / (1000000000));
                     $this->devices[$device]['size_units'] = lang('base_gigabytes');
                 } else {
-                    $this->devices[$device['device']]['size'] = round(($size_in_blocks * 512) / 1000000);
-                    $this->devices[$device['device']]['size_units'] = lang('base_megabytes');
+                    $this->devices[$device]['size'] = round(($size_in_blocks * 512) / 1000000);
+                    $this->devices[$device]['size_units'] = lang('base_megabytes');
                 }
             } else {
-                $this->devices[$device['device']]['size'] = '';
-                $this->devices[$device['device']]['size_units'] = lang('base_gigabytes');
+                $this->devices[$device]['size'] = '';
+                $this->devices[$device]['size_units'] = lang('base_gigabytes');
             }
         }
 
