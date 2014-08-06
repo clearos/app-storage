@@ -107,6 +107,7 @@ class Storage extends Engine
     const PATH_CONFIGLETS = '/etc/clearos/storage.d';
     const PATH_STATE = '/var/clearos/storage/state';
     const COMMAND_MOUNT = '/bin/mount';
+    const COMMAND_FINDMNT = '/bin/findmnt';
 
     const DELIMITER_START = '# Storage engine - start';
     const DELIMITER_END = '# Storage engine - end';
@@ -489,15 +490,15 @@ class Storage extends Engine
         clearos_profile(__METHOD__, __LINE__);
 
         $shell = new Shell();
-        $shell->execute(self::COMMAND_MOUNT, '', TRUE);
+        $shell->execute(self::COMMAND_FINDMNT, '-s', TRUE);
         $raw_mounts = $shell->get_output();
 
         $mounts = array();
 
         foreach ($raw_mounts as $line) {
             $matches = array();
-            if (preg_match('/([^\s]+)\s+([^\s]+)\s+([^\s]+)\s+/', $line, $matches))
-                $mounts[$matches[3]] = $matches[1];
+            if (preg_match('/([^\s]+)\s+([^\s]+)\s+/', $line, $matches))
+                $mounts[$matches[1]] = $matches[2];
         }
 
         return $mounts;
