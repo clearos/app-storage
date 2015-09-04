@@ -68,7 +68,7 @@ foreach ($devices as $device => $details) {
     // TODO: discuss icon strategy
     $in_use_icon = ($details['in_use']) ? '<span class="theme-icon-ok">&nbsp;</span>' : '';
     $is_store = ($details['is_store']) ? '<span class="theme-icon-ok">&nbsp;</span>' : '';
-    $identifier = (strlen($details['identifier']) > 15) ? substr($details['identifier'], 0, 15) . '...' : $details['identifier'];
+    $identifier = $details['identifier'];
 
     $item['title'] = $device;
     $item['action'] = '';
@@ -98,9 +98,14 @@ sort($items);
 // Summary table
 ///////////////////////////////////////////////////////////////////////////////
 
+$options = array(
+    'id' => 'storage_summary',
+    'responsive' => array(1 => 'none')
+);
 echo summary_table(
     lang('storage_devices'),
     $anchors,
     $headers,
-    $items
+    $items,
+    $options
 );
