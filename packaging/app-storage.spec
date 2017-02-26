@@ -1,7 +1,7 @@
 
 Name: app-storage
 Epoch: 1
-Version: 2.1.7
+Version: 2.3.20
 Release: 1%{dist}
 Summary: Storage Manager
 License: GPLv3
@@ -89,6 +89,7 @@ exit 0
 %files core
 %defattr(-,root,root)
 %exclude /usr/clearos/apps/storage/packaging
+%exclude /usr/clearos/apps/storage/unify.json
 %dir /usr/clearos/apps/storage
 %dir /etc/clearos/storage.d
 %dir /store
