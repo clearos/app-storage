@@ -1,25 +1,28 @@
 
 Name: app-storage
 Epoch: 1
-Version: 2.3.22
+Version: 2.5.0
 Release: 1%{dist}
 Summary: Storage Manager
 License: GPLv3
-Group: ClearOS/Apps
+Group: Applications/Apps
+Packager: ClearFoundation
+Vendor: ClearFoundation
 Source: %{name}-%{version}.tar.gz
 Buildarch: noarch
 Requires: %{name}-core = 1:%{version}-%{release}
+Requires: app-base
 Requires: app-base
 
 %description
 The Storage Manager allows you to map large data shares to storage volumes.
 
 %package core
-Summary: Storage Manager - Core
+Summary: Storage Manager - API
 License: LGPLv3
-Group: ClearOS/Libraries
+Group: Applications/API
 Requires: app-base-core
-Requires: app-base >= 1:1.4.31
+Requires: app-base-core >= 1:1.4.31
 Requires: app-events-core
 Requires: csplugin-filewatch
 Requires: initscripts

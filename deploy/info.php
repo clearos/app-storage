@@ -5,8 +5,7 @@
 /////////////////////////////////////////////////////////////////////////////
 
 $app['basename'] = 'storage';
-$app['version'] = '2.3.22';
-$app['release'] = '1';
+$app['version'] = '2.5.0';
 $app['vendor'] = 'ClearFoundation';
 $app['packager'] = 'ClearFoundation';
 $app['license'] = 'GPLv3';
@@ -42,8 +41,12 @@ $app['controllers']['storage']['inline_help'] = array(
 // Packaging
 /////////////////////////////////////////////////////////////////////////////
 
+$app['requires'] = array(
+    'app-base',
+);
+
 $app['core_requires'] = array(
-    'app-base >= 1:1.4.31',
+    'app-base-core >= 1:1.4.31',
     'app-events-core',
     'csplugin-filewatch',
     'initscripts',
